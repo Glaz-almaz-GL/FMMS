@@ -1,0 +1,358 @@
+<husk:Page
+    x:Class="FMMS.Views.HomePage"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:converters="clr-namespace:FMMS.Converters"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:fi="clr-namespace:FluentIcons.Avalonia;assembly=FluentIcons.Avalonia"
+    xmlns:husk="https://github.com/d3ara1n/Huskui.Avalonia"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:vm="clr-namespace:FMMS.ViewModels"
+    Padding="20"
+    d:DesignHeight="600"
+    d:DesignWidth="900"
+    x:DataType="vm:HomeViewModel"
+    DragDrop.AllowDrop="{Binding !IsAnalyzing}"
+    IsBackButtonVisible="False"
+    IsEnabled="{Binding !IsAnalyzing}"
+    mc:Ignorable="d">
+
+	<husk:Card Padding="0">
+		<!--  Убран внутренний отступ Card, он будет внутри Grid  -->
+		<Grid RowDefinitions="Auto, *, Auto">
+			<!--  Три строки: верх, центр (таблица), низ  -->
+
+			<!--  Верхняя панель настроек  -->
+			<husk:Card
+                Name="DragDropCard"
+                Grid.Row="0"
+                Margin="20,20,20,10"
+                Padding="20"
+                Classes="Elevated">
+				<StackPanel Orientation="Vertical" Spacing="15">
+
+					<StackPanel
+                        Grid.Row="0"
+                        Orientation="Horizontal"
+                        Spacing="12">
+						<fi:SymbolIcon
+                            FontSize="28"
+                            Foreground="{StaticResource AccentFillColorDefaultBrush}"
+                            Symbol="Folder" />
+						<TextBlock
+                            VerticalAlignment="Center"
+                            FontSize="26"
+                            FontWeight="SemiBold"
+                            Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                            Text="Анализ файлов" />
+					</StackPanel>
+
+					<!--  Путь к папке  -->
+					<Grid ColumnDefinitions="*, Auto" ColumnSpacing="10">
+						<TextBox
+                            Grid.Column="0"
+                            Classes="Filled"
+                            IsReadOnly="False"
+                            Text="{Binding SelectedFolderPath}"
+                            Watermark="Введите путь до папки для анализа..." />
+						<Button
+                            Grid.Column="1"
+                            Classes="Primary"
+                            Command="{Binding SelectFolderPathCommand}"
+                            ToolTip.Tip="Выбрать папку">
+							<fi:SymbolIcon FontSize="18" Symbol="FolderOpen" />
+						</Button>
+					</Grid>
+
+					<!--  Чекбокс  -->
+					<CheckBox Content="Включить нумерацию файлов" IsChecked="{Binding ShouldEnumerableFiles}" />
+					<CheckBox Content="Анализировать файлы внутри архивов" IsChecked="{Binding ShouldAnalyzeArchives}" />
+
+					<StackPanel Orientation="Horizontal" Spacing="10">
+						<!--  Тег с информацией о количестве файлов  -->
+						<husk:Tag Content="{Binding TotalFilesCount, StringFormat='Файлов обнаружено: {0}'}" IsVisible="{Binding FilesAnalyzeResult, Converter={x:Static ObjectConverters.IsNotNull}}" />
+						<husk:Tag Content="{Binding TotalArchiveFilesCount, StringFormat='Файлов внутри архивов обнаружено: {0}'}" IsVisible="{Binding FilesAnalyzeResult, Converter={x:Static ObjectConverters.IsNotNull}}" />
+						<husk:Tag Content="{Binding FilesSummaryPageCount, StringFormat='Страниц обнаружено: {0}'}" IsVisible="{Binding FilesAnalyzeResult, Converter={x:Static ObjectConverters.IsNotNull}}" />
+					</StackPanel>
+
+					<husk:InfoBar
+                        x:Name="DragDropHint"
+                        Classes="Primary"
+                        Content="Для начала анализа выберите папку для анализа или перетащите файл/папку."
+                        Header="Перетащите папку сюда"
+                        IsVisible="{Binding SelectedFolderPath, Converter={x:Static StringConverters.IsNullOrEmpty}, ConverterParameter=!}" />
+				</StackPanel>
+			</husk:Card>
+
+			<!--  Центральная часть - Таблица  -->
+			<husk:Card
+                Grid.Row="1"
+                Margin="20,0,20,10"
+                Padding="15"
+                Classes="Elevated">
+
+				<ScrollViewer>
+					<!--  Заменяем StackPanel на Grid  -->
+					<Grid RowDefinitions="Auto,*">
+						<!--  Одна строка для TextBlock (Auto), одна для DataGrid (*)  -->
+						<TextBlock
+                            Grid.Row="0"
+                            Margin="0,0,0,10"
+                            Text="{Binding FolderMessage}" />
+
+						<!--  Пример привязки состояния занятости  -->
+						<DataGrid
+                            Name="FilesDataGrid"
+                            Grid.Row="1"
+                            VerticalAlignment="Top"
+                            AutoGenerateColumns="False"
+                            CanUserReorderColumns="False"
+                            CanUserResizeColumns="True"
+                            CanUserSortColumns="True"
+                            CopyingRowClipboardContent="FilesDataGrid_CopyingRowClipboardContent"
+                            GridLinesVisibility="Vertical"
+                            HeadersVisibility="All"
+                            IsReadOnly="True"
+                            ItemsSource="{Binding FilesAnalyzeResult}"
+                            RowHeight="36"
+                            SelectedItem="{Binding SelectedFile}"
+                            SelectionChanged="DataGrid_SelectionChanged"
+                            SelectionMode="Extended"
+                            VerticalScrollBarVisibility="Auto">
+
+							<DataGrid.ContextMenu>
+								<ContextMenu Name="FilesDataGridContextMenu">
+									<MenuItem Command="{Binding OpenFileCommand}">
+										<MenuItem.Header>
+											<husk:IconLabel Icon="Open" Text="Открыть файл" />
+										</MenuItem.Header>
+									</MenuItem>
+									<MenuItem Command="{Binding OpenContainingFolderCommand}">
+										<MenuItem.Header>
+											<husk:IconLabel Icon="OpenFolder" Text="Открыть папку файла" />
+										</MenuItem.Header>
+									</MenuItem>
+									<Separator />
+									<MenuItem Command="{Binding CopySelectedItemsCommand}">
+										<MenuItem.Header>
+											<husk:IconLabel Icon="Copy" Text="Копировать" />
+										</MenuItem.Header>
+									</MenuItem>
+									<MenuItem Command="{Binding CopyAsTsvCommand}">
+										<MenuItem.Header>
+											<husk:IconLabel Icon="CopySelect" Text="Копировать как TSV" />
+										</MenuItem.Header>
+									</MenuItem>
+									<Separator />
+									<MenuItem Command="{Binding ShowFilePropertiesCommand}">
+										<MenuItem.Header>
+											<husk:IconLabel Icon="Info" Text="Свойства файла" />
+										</MenuItem.Header>
+									</MenuItem>
+									<Separator />
+
+									<!--  Подменю "Настройка столбцов"  -->
+									<MenuItem>
+										<MenuItem.Header>
+											<husk:IconLabel Icon="Settings" Text="Настройка столбцов" />
+										</MenuItem.Header>
+
+										<MenuItem>
+											<MenuItem.Header>
+												<CheckBox Content="Нумерация (#)" IsChecked="{Binding ColumnSettings.IsIndexColumnVisible, Mode=TwoWay}" />
+											</MenuItem.Header>
+										</MenuItem>
+										<MenuItem>
+											<MenuItem.Header>
+												<CheckBox Content="Имя файла" IsChecked="{Binding ColumnSettings.IsFileNameColumnVisible, Mode=TwoWay}" />
+											</MenuItem.Header>
+										</MenuItem>
+										<MenuItem>
+											<MenuItem.Header>
+												<CheckBox Content="Путь к файлу" IsChecked="{Binding ColumnSettings.IsFolderRelativePathColumnVisible, Mode=TwoWay}" />
+											</MenuItem.Header>
+										</MenuItem>
+										<MenuItem>
+											<MenuItem.Header>
+												<CheckBox Content="Страницы" IsChecked="{Binding ColumnSettings.IsPagesCountColumnVisible, Mode=TwoWay}" />
+											</MenuItem.Header>
+										</MenuItem>
+										<MenuItem>
+											<MenuItem.Header>
+												<CheckBox Content="Расширение" IsChecked="{Binding ColumnSettings.IsFileExtensionColumnVisible, Mode=TwoWay}" />
+											</MenuItem.Header>
+										</MenuItem>
+										<MenuItem>
+											<MenuItem.Header>
+												<CheckBox Content="SHA256" IsChecked="{Binding ColumnSettings.IsFileSHA256ColumnVisible, Mode=TwoWay}" />
+											</MenuItem.Header>
+										</MenuItem>
+										<MenuItem>
+											<MenuItem.Header>
+												<CheckBox Content="Полный путь" IsChecked="{Binding ColumnSettings.IsFilePathColumnVisible, Mode=TwoWay}" />
+											</MenuItem.Header>
+										</MenuItem>
+										<MenuItem>
+											<MenuItem.Header>
+												<CheckBox Content="Относительный путь" IsChecked="{Binding ColumnSettings.IsFileRelativePathColumnVisible, Mode=TwoWay}" />
+											</MenuItem.Header>
+										</MenuItem>
+										<MenuItem>
+											<MenuItem.Header>
+												<CheckBox Content="Архив" IsChecked="{Binding ColumnSettings.IsArchiveFileColumnVisible, Mode=TwoWay}" />
+											</MenuItem.Header>
+										</MenuItem>
+										<MenuItem>
+											<MenuItem.Header>
+												<CheckBox Content="Запись в архиве" IsChecked="{Binding ColumnSettings.IsArchiveEntryColumnVisible, Mode=TwoWay}" />
+											</MenuItem.Header>
+										</MenuItem>
+										<MenuItem>
+											<MenuItem.Header>
+												<CheckBox Content="Путь к архиву" IsChecked="{Binding ColumnSettings.IsArchiveFilePathColumnVisible, Mode=TwoWay}" />
+											</MenuItem.Header>
+										</MenuItem>
+										<MenuItem>
+											<MenuItem.Header>
+												<CheckBox Content="Сжатый размер (MB)" IsChecked="{Binding ColumnSettings.IsCompressedSizeColumnVisible, Mode=TwoWay}" />
+											</MenuItem.Header>
+										</MenuItem>
+										<MenuItem>
+											<MenuItem.Header>
+												<CheckBox Content="Не сжатый размер (MB)" IsChecked="{Binding ColumnSettings.IsUncompressedSizeColumnVisible, Mode=TwoWay}" />
+											</MenuItem.Header>
+										</MenuItem>
+										<MenuItem>
+											<MenuItem.Header>
+												<CheckBox Content="Размер файла (MB)" IsChecked="{Binding ColumnSettings.IsFileSizeMBColumnVisible, Mode=TwoWay}" />
+											</MenuItem.Header>
+										</MenuItem>
+										<MenuItem>
+											<MenuItem.Header>
+												<CheckBox Content="Размер файла (Byte)" IsChecked="{Binding ColumnSettings.IsFileSizeBytesColumnVisible, Mode=TwoWay}" />
+											</MenuItem.Header>
+										</MenuItem>
+									</MenuItem>
+								</ContextMenu>
+							</DataGrid.ContextMenu>
+
+							<DataGrid.Columns>
+								<DataGridTextColumn
+                                    Width="Auto"
+                                    Binding="{Binding Index, Mode=OneWay}"
+                                    Header="#"
+                                    IsReadOnly="True"
+                                    IsVisible="{Binding ColumnSettings.IsIndexColumnVisible}" />
+								<DataGridTextColumn
+                                    Width="Auto"
+                                    Binding="{Binding FileName}"
+                                    Header="Имя файла"
+                                    IsReadOnly="True"
+                                    IsVisible="{Binding ColumnSettings.IsFileNameColumnVisible}" />
+								<DataGridTextColumn
+                                    Width="2*"
+                                    Binding="{Binding FolderRelativePath}"
+                                    Header="Путь к файлу"
+                                    IsVisible="{Binding ColumnSettings.IsFolderRelativePathColumnVisible}" />
+								<DataGridTextColumn
+                                    Width="Auto"
+                                    Binding="{Binding PagesCount, StringFormat={}{0}}"
+                                    Header="Стр."
+                                    IsVisible="{Binding ColumnSettings.IsPagesCountColumnVisible}" />
+								<DataGridTextColumn
+                                    Width="Auto"
+                                    Binding="{Binding FileExtension}"
+                                    Header="Расш."
+                                    IsVisible="{Binding ColumnSettings.IsFileExtensionColumnVisible}" />
+								<DataGridTextColumn
+                                    Width="*"
+                                    Binding="{Binding FileSHA256}"
+                                    Header="SHA256"
+                                    IsVisible="{Binding ColumnSettings.IsFileSHA256ColumnVisible}" />
+								<DataGridTextColumn
+                                    Width="*"
+                                    Binding="{Binding FilePath}"
+                                    Header="Полный путь"
+                                    IsVisible="{Binding ColumnSettings.IsFilePathColumnVisible}" />
+								<DataGridTextColumn
+                                    Width="*"
+                                    Binding="{Binding FileRelativePath}"
+                                    Header="Относительный путь"
+                                    IsVisible="{Binding ColumnSettings.IsFileRelativePathColumnVisible}" />
+								<DataGridCheckBoxColumn
+                                    Width="Auto"
+                                    Binding="{Binding IsArchiveFile, Mode=TwoWay}"
+                                    Header="Архив"
+                                    IsVisible="{Binding ColumnSettings.IsArchiveFileColumnVisible}" />
+								<DataGridCheckBoxColumn
+                                    Width="Auto"
+                                    Binding="{Binding IsArchiveEntry, Mode=TwoWay}"
+                                    Header="Запись в архиве"
+                                    IsVisible="{Binding ColumnSettings.IsArchiveEntryColumnVisible}" />
+								<DataGridTextColumn
+                                    Width="*"
+                                    Binding="{Binding ArchiveFilePath}"
+                                    Header="Путь к архиву"
+                                    IsVisible="{Binding ColumnSettings.IsArchiveFilePathColumnVisible}" />
+								<DataGridTextColumn
+                                    Width="Auto"
+                                    Binding="{Binding CompressedSize, StringFormat={}{0:0.##} MB}"
+                                    Header="Сжатый размер (MB)"
+                                    IsVisible="{Binding ColumnSettings.IsCompressedSizeColumnVisible}" />
+								<DataGridTextColumn
+                                    Width="Auto"
+                                    Binding="{Binding UncompressedSize, StringFormat={}{0:0.##} MB}"
+                                    Header="Не сжатый размер (MB)"
+                                    IsVisible="{Binding ColumnSettings.IsUncompressedSizeColumnVisible}" />
+								<DataGridTextColumn
+                                    Width="Auto"
+                                    Binding="{Binding FileSizeMB, StringFormat={}{0:0.##} MB}"
+                                    Header="Размер файла (MB)"
+                                    IsVisible="{Binding ColumnSettings.IsFileSizeMBColumnVisible}" />
+								<DataGridTextColumn
+                                    Width="Auto"
+                                    Binding="{Binding FileSizeBytes, StringFormat={}{0:0.##} B}"
+                                    Header="Размер файла (Byte)"
+                                    IsVisible="{Binding ColumnSettings.IsFileSizeBytesColumnVisible}" />
+							</DataGrid.Columns>
+						</DataGrid>
+					</Grid>
+				</ScrollViewer>
+			</husk:Card>
+
+			<!--  Нижняя панель кнопок  -->
+			<husk:Card
+                Grid.Row="2"
+                Margin="20,0,20,20"
+                Padding="20"
+                VerticalAlignment="Bottom"
+                Classes="Elevated">
+				<Grid ColumnDefinitions="*, Auto" ColumnSpacing="10">
+					<Button
+                        Grid.Column="0"
+                        HorizontalAlignment="Stretch"
+                        Classes="Primary"
+                        Command="{Binding ProcessFilesCommand}">
+						<StackPanel
+                            VerticalAlignment="Center"
+                            Orientation="Horizontal"
+                            Spacing="8">
+							<fi:SymbolIcon
+                                VerticalAlignment="Center"
+                                FontSize="16"
+                                Symbol="PlayCircle" />
+							<TextBlock VerticalAlignment="Center" Text="Начать обработку файлов" />
+						</StackPanel>
+					</Button>
+					<Button
+                        Grid.Column="1"
+                        Padding="10,0,10,0"
+                        Command="{Binding SaveResultsCommand}"
+                        ToolTip.Tip="Сохранить результаты">
+						<fi:SymbolIcon FontSize="18" Symbol="ArrowExportUp" />
+					</Button>
+				</Grid>
+			</husk:Card>
+		</Grid>
+	</husk:Card>
+</husk:Page>

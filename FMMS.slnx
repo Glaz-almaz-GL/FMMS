@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="FMMS.Browser/FMMS.Browser.csproj" />
+  <Project Path="FMMS.Desktop/FMMS.Desktop.csproj" />
+  <Project Path="FMMS/FMMS.csproj" />
+</Solution>

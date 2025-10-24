@@ -1,0 +1,148 @@
+<husk:AppWindow
+    x:Class="FMMS.Views.MainWindow"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:fi="clr-namespace:FluentIcons.Avalonia;assembly=FluentIcons.Avalonia"
+    xmlns:husk="https://github.com/d3ara1n/Huskui.Avalonia"
+    xmlns:items="clr-namespace:FMMS.Items"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:views="clr-namespace:FMMS.Views"
+    xmlns:vm="clr-namespace:FMMS.ViewModels"
+    Title="FMMS"
+    d:DesignHeight="450"
+    d:DesignWidth="800"
+    x:DataType="vm:MainViewModel"
+    Icon="/Assets/avalonia-logo.ico"
+    mc:Ignorable="d">
+
+	<husk:AppWindow.Resources>
+		<!--  Добавляем анимацию  -->
+		<CrossFade x:Key="PageTransitionAnimation" Duration="0:0:0.3" />
+
+		<!--  Shared Gallery Item Template  -->
+		<DataTemplate x:Key="GalleryItemTemplate" DataType="{x:Type items:NavigationItem}">
+			<Grid Margin="4" ColumnDefinitions="Auto,*,Auto">
+				<fi:SymbolIcon
+                    Grid.Column="0"
+                    Margin="0,0,12,0"
+                    FontSize="{StaticResource MediumFontSize}"
+                    Symbol="{Binding Icon}" />
+				<StackPanel Grid.Column="1">
+					<TextBlock FontWeight="{StaticResource ControlStrongFontWeight}" Text="{Binding Title}" />
+					<TextBlock
+                        FontSize="{StaticResource SmallFontSize}"
+                        Foreground="{StaticResource ControlSecondaryForegroundBrush}"
+                        Text="{Binding Description}"
+                        TextTrimming="CharacterEllipsis" />
+				</StackPanel>
+				<StackPanel
+                    Grid.Column="2"
+                    Orientation="Horizontal"
+                    Spacing="4">
+					<Border Classes="NewBadge" IsVisible="{Binding IsNew}">
+						<TextBlock Classes="BadgeText" Text="NEW" />
+					</Border>
+					<Border Classes="UpdatedBadge" IsVisible="{Binding IsUpdated}">
+						<TextBlock Classes="BadgeText" Text="UPD" />
+					</Border>
+				</StackPanel>
+			</Grid>
+		</DataTemplate>
+	</husk:AppWindow.Resources>
+
+	<Grid ColumnDefinitions="320,*">
+		<!--  Sidebar  -->
+		<Border
+            Grid.Column="0"
+            Background="{StaticResource LayerBackgroundBrush}"
+            BorderBrush="{StaticResource ControlBorderBrush}"
+            BorderThickness="0,0,1,0">
+			<Grid RowDefinitions="Auto,Auto,*,Auto,Auto">
+				<!--  Header  -->
+				<StackPanel
+                    Grid.Row="0"
+                    Margin="16"
+                    Spacing="16">
+					<StackPanel Spacing="4">
+						<TextBlock
+                            FontSize="{StaticResource LargeFontSize}"
+                            FontWeight="{StaticResource ControlStrongFontWeight}"
+                            Text="FMMS" />
+						<TextBlock
+                            FontSize="{StaticResource SmallFontSize}"
+                            Foreground="{StaticResource ControlSecondaryForegroundBrush}"
+                            Text="File Metadata Management System" />
+					</StackPanel>
+				</StackPanel>
+
+				<!--  Navigation Content  -->
+				<ScrollViewer Grid.Row="2">
+					<StackPanel Margin="8,16,8,8">
+						<ListBox
+                            Classes="NavigationList"
+                            ItemTemplate="{StaticResource GalleryItemTemplate}"
+                            ItemsSource="{Binding NavigationItems}"
+                            SelectedItem="{Binding CurrentNavigationItem}" />
+					</StackPanel>
+				</ScrollViewer>
+
+				<!--  Footer  -->
+				<Border
+                    Grid.Row="3"
+                    Padding="16,12"
+                    Background="{StaticResource ControlTranslucentFullBackgroundBrush}"
+                    BorderBrush="{StaticResource ControlBorderBrush}"
+                    BorderThickness="0,1,0,0">
+					<Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto">
+						<TextBlock
+                            Grid.Column="0"
+                            VerticalAlignment="Center"
+                            FontSize="{StaticResource SmallFontSize}"
+                            Foreground="{StaticResource ControlSecondaryForegroundBrush}"
+                            Text="FMMS" />
+
+						<!--  GitHub  -->
+						<Button
+                            Grid.Column="2"
+                            Margin="0,0,8,0"
+                            Classes="Small"
+                            Command="{Binding OpenGitHubCommand}"
+                            Foreground="{StaticResource ControlAccentBackgroundBrush}"
+                            Theme="{StaticResource GhostButtonTheme}"
+                            ToolTip.Tip="GitHub">
+							<fi:SymbolIcon FontSize="{StaticResource SmallFontSize}" Symbol="Code" />
+						</Button>
+
+						<!--  Gmail  -->
+						<Button
+                            Grid.Column="3"
+                            Classes="Small"
+                            Command="{Binding OpenEmailCommand}"
+                            Foreground="{StaticResource ControlAccentBackgroundBrush}"
+                            Theme="{StaticResource GhostButtonTheme}"
+                            ToolTip.Tip="Email">
+							<fi:SymbolIcon FontSize="{StaticResource SmallFontSize}" Symbol="Mail" />
+						</Button>
+					</Grid>
+				</Border>
+			</Grid>
+		</Border>
+
+		<!--  Main Content  -->
+		<Grid Grid.Column="1">
+
+			<!--Content Frame с анимацией-->
+
+			<husk:SkeletonContainer
+                Background="{StaticResource OverlaySolidBackgroundBrush}"
+                BorderBrush="{StaticResource ControlBorderBrush}"
+                BorderThickness="1,0,0,0">
+				<husk:SkeletonContainer.Content>
+					<TransitioningContentControl Content="{Binding CurrentPage}" PageTransition="{StaticResource PageTransitionAnimation}" />
+				</husk:SkeletonContainer.Content>
+			</husk:SkeletonContainer>
+		</Grid>
+	</Grid>
+
+</husk:AppWindow>

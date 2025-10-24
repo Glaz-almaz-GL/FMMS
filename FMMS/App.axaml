@@ -1,0 +1,122 @@
+<Application
+    x:Class="FMMS.App"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:husk="https://github.com/d3ara1n/Huskui.Avalonia"
+    RequestedThemeVariant="Default">
+
+	<Application.Resources>
+		<SolidColorBrush
+            x:Key="HuskuiSelectedRowBrush20"
+            Opacity="0.2"
+            Color="{DynamicResource Accent9Color}" />
+		<SolidColorBrush
+            x:Key="HuskuiSelectedRowBrush30"
+            Opacity="0.3"
+            Color="{DynamicResource Accent9Color}" />
+	</Application.Resources>
+
+	<Application.Styles>
+		<FluentTheme />
+		<StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
+		<husk:HuskuiTheme Accent="Red" />
+
+		<Style Selector="DataGrid">
+			<Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
+			<Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}" />
+			<Setter Property="BorderThickness" Value="1" />
+			<Setter Property="RowBackground" Value="Transparent" />
+			<Setter Property="Foreground" Value="{DynamicResource ControlForegroundBrush}" />
+			<Setter Property="FontSize" Value="14" />
+			<Setter Property="HeadersVisibility" Value="Column" />
+			<Setter Property="SelectionMode" Value="Extended" />
+			<Setter Property="CanUserReorderColumns" Value="False" />
+			<Setter Property="IsReadOnly" Value="True" />
+			<Setter Property="HorizontalScrollBarVisibility" Value="Auto" />
+			<Setter Property="VerticalScrollBarVisibility" Value="Auto" />
+			<Setter Property="RowHeight" Value="32" />
+			<Setter Property="Margin" Value="0" />
+			<Setter Property="Padding" Value="0" />
+		</Style>
+
+		<Style Selector="DataGrid DataGridFrozenGrid Rectangle">
+			<Setter Property="IsVisible" Value="False" />
+		</Style>
+
+		<!--  Заголовки колонок  -->
+		<Style Selector="DataGrid DataGridColumnHeader">
+			<Setter Property="Background" Value="{DynamicResource ControlInteractiveBackgroundBrush}" />
+			<Setter Property="Foreground" Value="{DynamicResource ControlForegroundBrush}" />
+			<Setter Property="FontWeight" Value="SemiBold" />
+			<Setter Property="Padding" Value="12,6" />
+			<Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}" />
+			<Setter Property="BorderThickness" Value="0,0,1,1" />
+			<Setter Property="HorizontalContentAlignment" Value="Center" />
+			<Setter Property="VerticalContentAlignment" Value="Center" />
+			<Setter Property="Margin" Value="0" />
+		</Style>
+
+		<!--  TextBlock внутри заголовков - центрирование  -->
+		<Style Selector="DataGrid DataGridColumnHeader TextBlock">
+			<Setter Property="HorizontalAlignment" Value="Center" />
+			<Setter Property="VerticalAlignment" Value="Center" />
+		</Style>
+
+		<!--  Последний заголовок без правой границы  -->
+		<Style Selector="DataGrid DataGridColumnHeader:last-child">
+			<Setter Property="BorderThickness" Value="0,0,0,1" />
+		</Style>
+
+		<!--  Отключаем фокус у DataGrid  -->
+		<Style Selector="DataGrid">
+			<Setter Property="Background" Value="Transparent" />
+			<Setter Property="Focusable" Value="False" />
+		</Style>
+
+		<!--  Строки таблицы (для базовых свойств, кроме фона)  -->
+		<Style Selector="DataGridRow">
+			<Setter Property="Background" Value="Transparent" />
+			<Setter Property="Margin" Value="0" />
+			<Setter Property="Padding" Value="0" />
+		</Style>
+
+		<!--  Ячейки таблицы (для базовых свойств, кроме фона)  -->
+		<Style Selector="DataGridCell">
+			<Setter Property="Background" Value="Transparent" />
+			<Setter Property="Padding" Value="4 2" />
+			<Setter Property="BorderThickness" Value="0" />
+			<Setter Property="VerticalAlignment" Value="Center" />
+		</Style>
+
+		<!--  Убираем синий оверлей фокуса с ячейки  -->
+		<Style Selector="DataGridCell:focus">
+			<Setter Property="Background" Value="Transparent" />
+		</Style>
+
+		<!--  Четные строки (фон по умолчанию, если не выбраны и не наведены)  -->
+		<Style Selector="DataGridRow:not(:selected):not(:pointerover):nth-child(2n)">
+			<Setter Property="Background" Value="{DynamicResource ControlTranslucentHalfBackgroundBrush}" />
+		</Style>
+
+		<!--  Нечетные строки (фон по умолчанию, если не выбраны и не наведены)  -->
+		<Style Selector="DataGridRow:not(:selected):not(:pointerover):nth-child(2n+1)">
+			<Setter Property="Background" Value="{DynamicResource ControlTranslucentFullBackgroundBrush}" />
+		</Style>
+
+		<!--  Выбранная строка при наведении  -->
+		<Style Selector="DataGridRow:pointerover">
+			<Setter Property="Background" Value="{DynamicResource ControlAccentTranslucentHalfBackgroundBrush}" />
+		</Style>
+
+		<!--  Выбранная строка  -->
+		<Style Selector="DataGridRow:selected:nth-child(2n)">
+			<Setter Property="Background" Value="{DynamicResource HuskuiSelectedRowBrush20}" />
+		</Style>
+
+		<!--  Выбранная строка  -->
+		<Style Selector="DataGridRow:selected:nth-child(2n+1)">
+			<Setter Property="Background" Value="{DynamicResource HuskuiSelectedRowBrush30}" />
+		</Style>
+
+	</Application.Styles>
+</Application>

@@ -1,0 +1,134 @@
+<!--  Views/SettingsPage.axaml  -->
+<husk:Page
+    x:Class="FMMS.Views.SettingsPage"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:fi="clr-namespace:FluentIcons.Avalonia;assembly=FluentIcons.Avalonia"
+    xmlns:husk="https://github.com/d3ara1n/Huskui.Avalonia"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:vm="clr-namespace:FMMS.ViewModels"
+    Padding="20"
+    d:DesignHeight="700"
+    d:DesignWidth="900"
+    x:DataType="vm:SettingsViewModel"
+    IsBackButtonVisible="False"
+    mc:Ignorable="d">
+
+	<ScrollViewer>
+		<husk:Card Padding="0">
+			<Grid RowDefinitions="Auto, *, Auto">
+				<!--  Заголовок, основной контент, кнопки  -->
+				<!--  Верхняя панель заголовка  -->
+				<husk:Card
+                    Grid.Row="0"
+                    Margin="20,20,20,10"
+                    Padding="20"
+                    Classes="Elevated">
+					<StackPanel Orientation="Vertical" Spacing="15">
+						<StackPanel Orientation="Horizontal" Spacing="12">
+							<fi:SymbolIcon
+                                FontSize="28"
+                                Foreground="{StaticResource AccentFillColorDefaultBrush}"
+                                Symbol="Settings" />
+							<TextBlock
+                                VerticalAlignment="Center"
+                                FontSize="26"
+                                FontWeight="SemiBold"
+                                Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                Text="Настройки" />
+						</StackPanel>
+					</StackPanel>
+				</husk:Card>
+
+				<!--  Основная область настроек  -->
+				<ScrollViewer Grid.Row="1" Margin="0,0,0,10">
+					<!--  Добавлен ScrollViewer для центральной части  -->
+					<husk:Card
+                        Margin="20,0,20,0"
+                        Padding="20"
+                        Classes="Elevated">
+						<StackPanel Orientation="Vertical" Spacing="20">
+							<!--  Секция: Тема  -->
+							<husk:Card Padding="15" Classes="Elevated">
+								<StackPanel Orientation="Vertical" Spacing="10">
+									<StackPanel Orientation="Horizontal" Spacing="10">
+										<fi:SymbolIcon Symbol="Color" />
+										<TextBlock
+                                            FontSize="18"
+                                            FontWeight="SemiBold"
+                                            Text="Тема приложения" />
+									</StackPanel>
+									<StackPanel Orientation="Vertical" Spacing="5">
+										<TextBlock Text="Выберите тему интерфейса:" />
+										<ComboBox
+                                            Name="ThemeComboBox"
+                                            ItemsSource="{Binding ThemeOptions}"
+                                            SelectedItem="{Binding Settings.Theme, Mode=TwoWay}" />
+									</StackPanel>
+								</StackPanel>
+							</husk:Card>
+
+							<!--  Секция: Экспорт  -->
+							<husk:Card Padding="15" Classes="Elevated">
+								<StackPanel Orientation="Vertical" Spacing="10">
+									<StackPanel Orientation="Horizontal" Spacing="10">
+										<fi:SymbolIcon Symbol="ArrowExport" />
+										<TextBlock
+                                            FontSize="18"
+                                            FontWeight="SemiBold"
+                                            Text="Экспорт данных" />
+									</StackPanel>
+									<StackPanel Orientation="Vertical" Spacing="5">
+										<TextBlock Text="Расширение файла по умолчанию:" />
+										<ComboBox
+                                            Name="ExportFormatComboBox"
+                                            ItemsSource="{Binding ExportFormats}"
+                                            SelectedItem="{Binding Settings.ExportFileExtension, Mode=TwoWay}" />
+									</StackPanel>
+								</StackPanel>
+							</husk:Card>
+
+							<!--  Секция: Обновления  -->
+							<husk:Card Padding="15" Classes="Elevated">
+								<StackPanel Orientation="Vertical" Spacing="10">
+									<StackPanel Orientation="Horizontal" Spacing="10">
+										<fi:SymbolIcon Symbol="ApprovalsApp" />
+										<TextBlock
+                                            FontSize="18"
+                                            FontWeight="SemiBold"
+                                            Text="Обновления" />
+									</StackPanel>
+									<StackPanel Orientation="Vertical" Spacing="5">
+										<CheckBox Content="Автоматически проверять наличие обновлений" IsChecked="{Binding Settings.AutoCheckForUpdates, Mode=TwoWay}" />
+									</StackPanel>
+								</StackPanel>
+							</husk:Card>
+
+							<!--  Дополнительные секции можно добавить сюда  -->
+
+						</StackPanel>
+					</husk:Card>
+				</ScrollViewer>
+
+				<!--  Нижняя панель кнопок  -->
+				<husk:Card
+                    Grid.Row="2"
+                    Margin="20,0,20,20"
+                    Padding="20"
+                    Classes="Elevated">
+					<Button
+                        Grid.Column="1"
+                        HorizontalAlignment="Right"
+                        Classes="Primary"
+                        Command="{Binding SaveSettingsCommand}">
+						<StackPanel Orientation="Horizontal" Spacing="8">
+							<fi:SymbolIcon Symbol="Save" />
+							<TextBlock Text="Сохранить" />
+						</StackPanel>
+					</Button>
+				</husk:Card>
+			</Grid>
+		</husk:Card>
+	</ScrollViewer>
+</husk:Page>
