@@ -13,7 +13,6 @@
     d:DesignHeight="450"
     d:DesignWidth="800"
     x:DataType="vm:MainViewModel"
-    Icon="/Assets/avalonia-logo.ico"
     mc:Ignorable="d">
 
 	<husk:AppWindow.Resources>
@@ -132,7 +131,7 @@
 		<!--  Main Content  -->
 		<Grid Grid.Column="1">
 
-			<!--Content Frame с анимацией-->
+			<!--  Content Frame с анимацией  -->
 
 			<husk:SkeletonContainer
                 Background="{StaticResource OverlaySolidBackgroundBrush}"
