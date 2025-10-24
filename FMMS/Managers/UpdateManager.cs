@@ -243,13 +243,13 @@ namespace FMMS.Managers
             return latest > _appVersion;
         }
 
-        public static async Task<JObject?> GetLatestRelease(string owner, string repo, string GithubToken)
+        public static async Task<JObject?> GetLatestRelease(string owner, string repo, string githubToken)
         {
             HttpClient client = new();
 
             client.DefaultRequestHeaders.UserAgent.ParseAdd("C# App");
             client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", GithubToken);
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", githubToken);
             client.DefaultRequestHeaders.Add("X-GitHub-Api-Version", "2022-11-28");
 
             // Исправлен URL (убраны лишние пробелы)

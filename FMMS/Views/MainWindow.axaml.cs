@@ -16,6 +16,10 @@ public partial class MainWindow : AppWindow
         ClipboardManager.Initialize(this);
 
         DataContext = new MainViewModel();
-        _ = UpdateManager.CheckForUpdatesAsync();
+
+        if (SettingsManager.CurrentSettings.AutoCheckForUpdates)
+        {
+            _ = UpdateManager.CheckForUpdatesAsync();
+        }
     }
 }

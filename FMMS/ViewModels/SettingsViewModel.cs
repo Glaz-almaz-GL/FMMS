@@ -41,7 +41,8 @@ namespace FMMS.ViewModels
                 SettingsManager.SaveSettings(Settings);
 
                 // Можно добавить уведомление об успешном сохранении (например, InfoBar или Growl)
-                System.Diagnostics.Debug.WriteLine("Settings saved successfully via SettingsManager.");
+                GrowlsManager.ShowSuccesMsg("Настройки успешно сохранены");
+                Debug.WriteLine("Settings saved successfully via SettingsManager.");
             }
             catch (Exception ex)
             {
