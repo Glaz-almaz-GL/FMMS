@@ -31,6 +31,7 @@ FMMS (Files Metadata Management System) — это приложение наст
   ![TSV Example](https://github.com/user-attachments/assets/0c215540-8c00-4d3b-b01a-a833919cb69f)
 - **Свойства файла** — открыть стандартное окно свойств файла
 - **Настройка столбцов** — выбор отображаемых столбцов (настройки сохраняются в конфигурационный файл)
+
   ![Column Settings](https://github.com/user-attachments/assets/8d2bbfce-11c7-45b3-91f4-ef72f6249324)
 
 #### Таблица файлов
