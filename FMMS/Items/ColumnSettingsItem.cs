@@ -1,8 +1,9 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
+using System;
 
 namespace FMMS.Items
 {
-    public partial class ColumnSettingsItem : ObservableObject
+    public partial class ColumnSettingsItem : ObservableObject, ICloneable
     {
         [ObservableProperty] private bool _isIndexColumnVisible = true;
         [ObservableProperty] private bool _isFileNameColumnVisible = true;
@@ -19,5 +20,27 @@ namespace FMMS.Items
         [ObservableProperty] private bool _isUncompressedSizeColumnVisible = false;
         [ObservableProperty] private bool _isFileSizeMBColumnVisible = false;
         [ObservableProperty] private bool _isFileSizeBytesColumnVisible = false;
+
+        public object Clone()
+        {
+            return new ColumnSettingsItem
+            {
+                IsIndexColumnVisible = this.IsIndexColumnVisible,
+                IsFileNameColumnVisible = this.IsFileNameColumnVisible,
+                IsFolderRelativePathColumnVisible = this.IsFolderRelativePathColumnVisible,
+                IsPagesCountColumnVisible = this.IsPagesCountColumnVisible,
+                IsFileExtensionColumnVisible = this.IsFileExtensionColumnVisible,
+                IsFileSHA256ColumnVisible = this.IsFileSHA256ColumnVisible,
+                IsFilePathColumnVisible = this.IsFilePathColumnVisible,
+                IsFileRelativePathColumnVisible = this.IsFileRelativePathColumnVisible,
+                IsArchiveFileColumnVisible = this.IsArchiveFileColumnVisible,
+                IsArchiveEntryColumnVisible = this.IsArchiveEntryColumnVisible,
+                IsArchiveFilePathColumnVisible = this.IsArchiveFilePathColumnVisible,
+                IsCompressedSizeColumnVisible = this.IsCompressedSizeColumnVisible,
+                IsUncompressedSizeColumnVisible = this.IsUncompressedSizeColumnVisible,
+                IsFileSizeMBColumnVisible = this.IsFileSizeMBColumnVisible,
+                IsFileSizeBytesColumnVisible = this.IsFileSizeBytesColumnVisible
+            };
+        }
     }
 }

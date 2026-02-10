@@ -16,38 +16,40 @@ namespace FMMS.Managers
     public static class UpdateManager
     {
         private static readonly Version _appVersion = Assembly.GetExecutingAssembly()?.GetName().Version ?? new Version("1.0.0.0");
-        private const string _githubToken = "YOUR-GITHUB-TOKEN";
 
         private const string _owner = "Glaz-almaz-GL";
         private const string _repo = "FMMS";
 
         private static readonly string _tempFolderPath = Path.GetTempPath();
 
+        private const string CheckingForUpdatesTitle = "Проверка обновления";
+        private const string InstallingUpdateTitle = "Установка обновления";
+        private const string DownloadingUpdateTitle = "Скачивание";
+        private const string SetupFileName = "setup.exe";
+        private const int BufferSize = 8192;
+        private const int ProgressDownloadStart = 70;
+        private const int ProgressDownloadEnd = 90;
+        private const int ProgressDownloadRange = ProgressDownloadEnd - ProgressDownloadStart;
+        private const string DownloadFailedTitle = "Ошибка загрузки";
+        private const string CheckingUpdateFailedTitle = "Ошибка при проверке обновлений";
+
         public static async Task CheckForUpdatesAsync(GrowlItem? progressGrowl = null)
         {
             try
             {
-                // Обновляем прогресс
-                UpdateProgress(progressGrowl, 10, "Получение информации о последнем релизе...", "Проверка обновления");
+                UpdateProgress(progressGrowl, 10, "Получение информации о последнем релизе...", CheckingForUpdatesTitle);
 
-                JObject? latestRelease = await GetLatestRelease(_owner, _repo, _githubToken);
+                JObject? latestRelease = await GetLatestRelease(_owner, _repo);
 
                 if (latestRelease == null)
                 {
-                    UpdateProgress(progressGrowl, 100, "Не удалось получить информацию о релизе", "Проверка обновления", false);
+                    UpdateProgress(progressGrowl, 100, "Не удалось получить информацию о релизе", CheckingForUpdatesTitle, false);
                     return;
                 }
 
-                UpdateProgress(progressGrowl, 20, "Анализ информации о версии...", "Проверка обновления");
+                UpdateProgress(progressGrowl, 20, "Анализ информации о версии...", CheckingForUpdatesTitle);
 
                 string? latestVersion = latestRelease["tag_name"]?.ToString().Replace("v", "");
-
-                // В методе CheckForUpdates
-                if (latestRelease == null)
-                {
-                    GrowlsManager.ShowInfoMsg("Релизы не найдены. Убедитесь, что репозиторий содержит релизы.", "Обновление недоступно");
-                    return;
-                }
 
                 // Проверяем, есть ли ассеты
                 JArray? assets = latestRelease["assets"] as JArray;
@@ -56,6 +58,7 @@ namespace FMMS.Managers
                     GrowlsManager.ShowInfoMsg("В релизе нет файлов для загрузки.", "Обновление недоступно");
                     return;
                 }
+
                 string? downloadUrl;
 
                 if (assets?.Count > 0)
@@ -65,7 +68,7 @@ namespace FMMS.Managers
                 }
                 else
                 {
-                    UpdateProgress(progressGrowl, 100, "В релизе нет файлов", "Установка обновления", false);
+                    UpdateProgress(progressGrowl, 100, "В релизе нет файлов", InstallingUpdateTitle, false);
                     GrowlsManager.ShowErrorMsg("В релизе нет файлов.");
                     return;
                 }
@@ -74,23 +77,23 @@ namespace FMMS.Managers
 
                 if (string.IsNullOrEmpty(latestVersion) || string.IsNullOrEmpty(downloadUrl))
                 {
-                    UpdateProgress(progressGrowl, 100, "Ошибка данных релиза", "Установка обновления", false);
+                    UpdateProgress(progressGrowl, 100, "Ошибка данных релиза", InstallingUpdateTitle, false);
                     GrowlsManager.ShowErrorMsg("Не удалось проверить обновления. Попробуйте снова.");
                     return;
                 }
 
                 if (!Uri.IsWellFormedUriString(downloadUrl, UriKind.Absolute))
                 {
-                    UpdateProgress(progressGrowl, 100, "Неверный URL", "Установка обновления", false);
+                    UpdateProgress(progressGrowl, 100, "Неверный URL", InstallingUpdateTitle, false);
                     GrowlsManager.ShowErrorMsg("Неверный формат downloadUrl: URL недействителен.");
                     return;
                 }
 
-                UpdateProgress(progressGrowl, 30, "Проверка наличия новой версии...", "Проверка обновления");
+                UpdateProgress(progressGrowl, 30, "Проверка наличия новой версии...", CheckingForUpdatesTitle);
 
                 if (IsNewerVersion(latestVersion))
                 {
-                    UpdateProgress(progressGrowl, 40, "Найдена новая версия", "Установка обновления");
+                    UpdateProgress(progressGrowl, 40, "Найдена новая версия", InstallingUpdateTitle);
 
                     string message = $"Доступна новая версия: {latestVersion}\nТекущая версия: {_appVersion}\nЖелаете обновить программу?";
 
@@ -98,129 +101,213 @@ namespace FMMS.Managers
 
                     if (dialog == true)
                     {
-                        UpdateProgress(progressGrowl, 50, "Начало процесса обновления...", "Установка обновления");
+                        UpdateProgress(progressGrowl, 50, "Начало процесса обновления...", InstallingUpdateTitle);
                         await StartUpdateProcess(downloadUrl, _tempFolderPath, progressGrowl);
                     }
                     else
                     {
-                        UpdateProgress(progressGrowl, 100, "Обновление отменено пользователем", "Установка обновления", false);
+                        UpdateProgress(progressGrowl, 100, "Обновление отменено пользователем", InstallingUpdateTitle, false);
                     }
                 }
                 else
                 {
-                    UpdateProgress(progressGrowl, 100, $"Установлена последняя версия: {_appVersion}", "Проверка обновления", false);
+                    UpdateProgress(progressGrowl, 100, $"Установлена последняя версия: {_appVersion}", CheckingForUpdatesTitle, false);
                     GrowlsManager.ShowInfoMsg($"Уже установлена последняя версия: {_appVersion}", "Обновление не требуется");
                 }
             }
             catch (Exception ex)
             {
-                UpdateProgress(progressGrowl, 100, "Ошибка", "Проверка обновления", false);
-                GrowlsManager.ShowErrorMsg(ex, "Ошибка при проверке обновлений");
+                UpdateProgress(progressGrowl, 100, "Ошибка", CheckingForUpdatesTitle, false);
+                GrowlsManager.ShowErrorMsg(ex, CheckingUpdateFailedTitle);
             }
         }
 
+        /// <summary>
+        /// Загружает файл обновления и запускает установку.
+        /// </summary>
+        /// <param name="downloadUrl">URL-адрес файла обновления.</param>
+        /// <param name="tempFolderPath">Путь к временной папке для сохранения файла.</param>
+        /// <param name="progressGrowl">Элемент для отображения прогресса (может быть null).</param>
+        /// <returns></returns>
         private static async Task StartUpdateProcess(string downloadUrl, string tempFolderPath, GrowlItem? progressGrowl = null)
         {
+            string tempFilePath = Path.Combine(tempFolderPath, SetupFileName);
+
             try
             {
-                UpdateProgress(progressGrowl, 60, "Подготовка к загрузке обновления...", "Скачивание");
+                UpdateProgress(progressGrowl, 60, "Подготовка к загрузке обновления...", DownloadingUpdateTitle);
 
-                string tempSetupPath = Path.Combine(tempFolderPath, "setup.exe");
+                bool downloadSuccessful = await DownloadFileAsync(downloadUrl, tempFilePath, progressGrowl);
 
-                using (HttpClient client = new())
+                if (!downloadSuccessful)
                 {
-                    try
-                    {
-                        UpdateProgress(progressGrowl, 65, "Отправка запроса на сервер...", "Скачивание");
-
-                        using HttpResponseMessage response = await client.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead);
-                        response.EnsureSuccessStatusCode(); // Это вызовет исключение при 404
-
-                        long totalBytes = response.Content.Headers.ContentLength ?? -1L;
-                        bool canReportProgress = totalBytes != -1;
-
-                        UpdateProgress(progressGrowl, 70, "Начало загрузки файла...", "Скачивание");
-
-                        await using Stream stream = await response.Content.ReadAsStreamAsync();
-                        await using FileStream fileStream = new(tempSetupPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
-
-                        if (canReportProgress)
-                        {
-                            byte[] buffer = new byte[8192];
-                            long totalBytesRead = 0;
-                            int bytesRead;
-                            int lastProgress = 70;
-
-                            while ((bytesRead = await stream.ReadAsync(buffer)) > 0)
-                            {
-                                await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead));
-                                totalBytesRead += bytesRead;
-
-                                if (totalBytes > 0)
-                                {
-                                    int currentProgress = 70 + (int)((double)totalBytesRead / totalBytes * 20);
-                                    if (currentProgress > lastProgress)
-                                    {
-                                        lastProgress = currentProgress;
-                                        UpdateProgress(progressGrowl, currentProgress, $"Загрузка... {totalBytesRead / 1024}KB / {totalBytes / 1024}KB", "Скачивание");
-                                    }
-                                }
-                            }
-                        }
-                        else
-                        {
-                            UpdateProgress(progressGrowl, 80, "Загрузка файла...", "Скачивание");
-                            await stream.CopyToAsync(fileStream);
-                        }
-                    }
-                    catch (HttpRequestException e)
-                    {
-                        UpdateProgress(progressGrowl, 100, "Ошибка HTTP", "Установка", false);
-
-                        if (e.Message.Contains("404"))
-                        {
-                            Process.Start(new ProcessStartInfo
-                            {
-                                FileName = downloadUrl,
-                                UseShellExecute = true
-                            });
-                            GrowlsManager.ShowErrorMsg("Файл обновления не найден. Проверьте наличие релиза на GitHub.", "Ошибка загрузки");
-                        }
-                        else
-                        {
-                            GrowlsManager.ShowErrorMsg($"Ошибка HTTP при обновлении: {e.Message}", "Ошибка загрузки");
-                        }
-                        return;
-                    }
-                    catch (Exception e)
-                    {
-                        UpdateProgress(progressGrowl, 100, "Критическая ошибка", "Установка", false);
-                        GrowlsManager.ShowErrorMsg($"Критическая ошибка при обновлении: {e.Message}", "Ошибка загрузки");
-                        return;
-                    }
+                    return; // Ошибка уже обработана в DownloadFileAsync
                 }
 
-                UpdateProgress(progressGrowl, 95, "Запуск установщика...", "Установка");
+                UpdateProgress(progressGrowl, 95, "Запуск установщика...", InstallingUpdateTitle);
 
-                ProcessStartInfo startInfo = new()
+                if (!TryStartInstaller(tempFilePath))
                 {
-                    FileName = tempSetupPath,
-                    UseShellExecute = true,
-                    Verb = "runas"
-                };
-                Process.Start(startInfo);
-
-                UpdateProgress(progressGrowl, 100, "Установщик запущен. Приложение будет закрыто.", "Установка", false);
-
-                if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-                {
-                    desktop.Shutdown(0);
+                    UpdateProgress(progressGrowl, 100, "Ошибка запуска установщика", InstallingUpdateTitle, false);
+                    return; // Ошибка уже показана
                 }
+
+                UpdateProgress(progressGrowl, 100, "Установщик запущен. Приложение будет закрыто.", InstallingUpdateTitle, false);
+
+                // Закрытие приложения после запуска установщика
+                CloseApplication();
             }
             catch (Exception ex)
             {
-                UpdateProgress(progressGrowl, 100, "Ошибка запуска", "Установка", false);
-                GrowlsManager.ShowErrorMsg(ex, "Ошибка при начале обновления");
+                UpdateProgress(progressGrowl, 100, "Ошибка во время подготовки к обновлению", InstallingUpdateTitle, false);
+                GrowlsManager.ShowErrorMsg(ex, "Ошибка при подготовке к обновлению");
+            }
+        }
+
+        /// <summary>
+        /// Асинхронно загружает файл по указанному URL с отслеживанием прогресса.
+        /// </summary>
+        /// <param name="url">URL-адрес файла для загрузки.</param>
+        /// <param name="filePath">Локальный путь для сохранения файла.</param>
+        /// <param name="progressGrowl">Элемент для отображения прогресса (может быть null).</param>
+        /// <returns>True, если загрузка прошла успешно, иначе False.</returns>
+        private static async Task<bool> DownloadFileAsync(string url, string filePath, GrowlItem? progressGrowl)
+        {
+            try
+            {
+                UpdateProgress(progressGrowl, 65, "Отправка запроса на сервер...", DownloadingUpdateTitle);
+
+                using var httpClient = new HttpClient();
+                using var response = await httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+                response.EnsureSuccessStatusCode();
+
+                long totalBytes = response.Content.Headers.ContentLength ?? -1L;
+                bool canReportProgress = totalBytes > 0;
+
+                UpdateProgress(progressGrowl, 70, "Начало загрузки файла...", DownloadingUpdateTitle);
+
+                var downloadTask = canReportProgress
+                    ? DownloadWithProgressAsync(response, filePath, totalBytes, progressGrowl)
+                    : DownloadWithoutProgressAsync(response, filePath);
+
+                await downloadTask;
+                return true;
+            }
+            catch (HttpRequestException httpEx)
+            {
+                HandleHttpError(httpEx, url, progressGrowl);
+                return false;
+            }
+            catch (Exception generalEx)
+            {
+                UpdateProgress(progressGrowl, 100, "Критическая ошибка", InstallingUpdateTitle, false);
+                GrowlsManager.ShowErrorMsg($"Критическая ошибка при загрузке: {generalEx.Message}", DownloadFailedTitle);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Загружает файл с отслеживанием прогресса.
+        /// </summary>
+        private static async Task DownloadWithProgressAsync(HttpResponseMessage response, string filePath, long totalBytes, GrowlItem? progressGrowl)
+        {
+            var buffer = new byte[BufferSize];
+            long totalBytesRead = 0;
+            int lastProgressValue = ProgressDownloadStart;
+
+            await using var stream = await response.Content.ReadAsStreamAsync();
+            await using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, BufferSize, useAsync: true);
+
+            int bytesRead;
+            while ((bytesRead = await stream.ReadAsync(buffer)) > 0)
+            {
+                await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead));
+                totalBytesRead += bytesRead;
+
+                int currentProgress = ProgressDownloadStart + (int)((double)totalBytesRead / totalBytes * ProgressDownloadRange);
+                if (currentProgress > lastProgressValue)
+                {
+                    lastProgressValue = currentProgress;
+                    UpdateProgress(progressGrowl, currentProgress,
+                        $"Загрузка... {totalBytesRead / 1024:N0} KB / {totalBytes / 1024:N0} KB", DownloadingUpdateTitle);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Загружает файл без отслеживания прогресса.
+        /// </summary>
+        private static async Task DownloadWithoutProgressAsync(HttpResponseMessage response, string filePath)
+        {
+            await using var stream = await response.Content.ReadAsStreamAsync();
+            await using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, BufferSize, useAsync: true);
+            await stream.CopyToAsync(fileStream);
+        }
+
+        /// <summary>
+        /// Обрабатывает ошибки HTTP при загрузке.
+        /// </summary>
+        private static void HandleHttpError(HttpRequestException e, string downloadUrl, GrowlItem? progressGrowl)
+        {
+            UpdateProgress(progressGrowl, 100, "Ошибка HTTP", InstallingUpdateTitle, false);
+
+            if (e.StatusCode == System.Net.HttpStatusCode.NotFound) // 404
+            {
+                // Попытка открыть URL в браузере как резервный вариант
+                try
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = downloadUrl,
+                        UseShellExecute = true
+                    });
+                }
+                catch (Exception processEx)
+                {
+                    GrowlsManager.ShowErrorMsg($"Не удалось открыть URL в браузере: {processEx.Message}", DownloadFailedTitle);
+                }
+
+                GrowlsManager.ShowErrorMsg("Файл обновления не найден. Проверьте наличие релиза на GitHub.", DownloadFailedTitle);
+            }
+            else
+            {
+                GrowlsManager.ShowErrorMsg($"Ошибка HTTP при загрузке: {e.StatusCode} - {e.Message}", DownloadFailedTitle);
+            }
+        }
+
+        /// <summary>
+        /// Пытается запустить установщик с правами администратора.
+        /// </summary>
+        /// <param name="installerPath">Путь к файлу установщика.</param>
+        /// <returns>True, если запуск был успешной попыткой, иначе False.</returns>
+        private static bool TryStartInstaller(string installerPath)
+        {
+            try
+            {
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = installerPath,
+                    UseShellExecute = true,
+                    Verb = "runas" // Запуск от имени администратора
+                };
+                Process.Start(startInfo);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                GrowlsManager.ShowErrorMsg($"Не удалось запустить установщик: {ex.Message}", "Ошибка установки");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Закрывает текущее приложение.
+        /// </summary>
+        private static void CloseApplication()
+        {
+            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            {
+                desktop.Shutdown(0);
             }
         }
 
@@ -232,57 +319,73 @@ namespace FMMS.Managers
                 growlItem.Content = message;
                 growlItem.Progress = progress;
                 growlItem.IsProgressBarVisible = showProgress;
-
                 growlItem.UpdateLayout();
             }
         }
 
         private static bool IsNewerVersion(string latestVersion)
         {
-            Version latest = new(latestVersion);
+            if (!Version.TryParse(latestVersion, out var latest))
+            {
+                // Логирование или обработка неверного формата версии
+                return false;
+            }
             return latest > _appVersion;
         }
 
-        public static async Task<JObject?> GetLatestRelease(string owner, string repo, string githubToken)
+        public static async Task<JObject?> GetLatestRelease(string owner, string repo)
         {
-            HttpClient client = new();
+            using var handler = new HttpClientHandler();
+            using var client = new HttpClient(handler);
 
-            client.DefaultRequestHeaders.UserAgent.ParseAdd("C# App");
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("FMMS-App");
             client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", githubToken);
             client.DefaultRequestHeaders.Add("X-GitHub-Api-Version", "2022-11-28");
 
-            // Исправлен URL (убраны лишние пробелы)
             string url = $"https://api.github.com/repos/{owner}/{repo}/releases/latest";
 
             try
             {
-                HttpResponseMessage response = await client.GetAsync(url);
+                var response = await client.GetAsync(url);
 
                 if (response.IsSuccessStatusCode)
                 {
                     string responseBody = await response.Content.ReadAsStringAsync();
-                    JObject release = JObject.Parse(responseBody);
+                    var release = JObject.Parse(responseBody);
 
                     string? htmlUrl = release["html_url"]?.ToString();
+                    string? tagName = release["tag_name"]?.ToString();
 
-                    if (!string.IsNullOrEmpty(htmlUrl))
+                    if (!string.IsNullOrEmpty(htmlUrl) || !string.IsNullOrEmpty(tagName))
                     {
                         return release;
                     }
                     else
                     {
-                        GrowlsManager.ShowErrorMsg("Не удалось извлечь 'html_url' из ответа.", "Ошибка при проверке обновлений");
+                        GrowlsManager.ShowErrorMsg("Ответ от GitHub API не содержит ожидаемых данных (html_url или tag_name).", CheckingUpdateFailedTitle);
                     }
                 }
                 else
                 {
-                    GrowlsManager.ShowErrorMsg($"Ошибка при запросе новейшей версии: {(int)response.StatusCode} - {response.ReasonPhrase}", "Ошибка при проверке обновлений");
+                    string errorMessage = $"Ошибка при запросе к GitHub API: {(int)response.StatusCode} - {response.ReasonPhrase}";
+                    if ((int)response.StatusCode == 403)
+                    {
+                        errorMessage += "\nВозможно, превышено ограничение на количество запросов (Rate Limit).";
+                    }
+                    GrowlsManager.ShowErrorMsg(errorMessage, CheckingUpdateFailedTitle);
                 }
+            }
+            catch (HttpRequestException httpEx)
+            {
+                GrowlsManager.ShowErrorMsg($"Сетевая ошибка при обращении к GitHub: {httpEx.Message}", CheckingUpdateFailedTitle);
+            }
+            catch (Newtonsoft.Json.JsonReaderException jsonEx)
+            {
+                GrowlsManager.ShowErrorMsg($"Ошибка при обработке ответа от GitHub (некорректный JSON): {jsonEx.Message}", CheckingUpdateFailedTitle);
             }
             catch (Exception ex)
             {
-                GrowlsManager.ShowErrorMsg(ex);
+                GrowlsManager.ShowErrorMsg($"Непредвиденная ошибка при получении информации о релизе: {ex.Message}", CheckingUpdateFailedTitle);
             }
 
             return null;

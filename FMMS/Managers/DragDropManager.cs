@@ -23,7 +23,7 @@ namespace FMMS.Managers
             }
             else
             {
-                GrowlsManager.ShowErrorMsg($"Файл не существует");
+                GrowlsManager.ShowErrorMsg("Файл не существует");
             }
 
             return (null, null); // Ничего подходящего не было сброшено
@@ -32,7 +32,6 @@ namespace FMMS.Managers
         /// <summary>
         /// Обрабатывает сброшенные пути (файлы или папки).
         /// </summary>
-        /// <param name="filePaths">Список сброшенных путей.</param>
         /// <returns>Путь к папке, если была сброшена папка, иначе null.</returns>
         private static (bool? isDir, string? filePath) ProcessDroppedFile(string filePath)
         {

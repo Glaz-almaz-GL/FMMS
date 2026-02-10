@@ -2,6 +2,7 @@
 using FMMS.Models;
 using iText.Kernel.Pdf;
 using SharpCompress.Archives;
+using SharpCompress.Common;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -15,7 +16,7 @@ namespace FMMS.Managers
     {
         private static readonly HashSet<string> ArchiveExtensions = new(StringComparer.OrdinalIgnoreCase)
         {
-            ".zip", ".rar", ".7z", ".tar", ".gz", ".tgz", ".bz2", ".tbz2", ".xz", ".txz", ".lz", ".tlz", ".z", ".lzma", ".lzo", ".ar", ".cpio", ".iso", ".dmg", ".wim", ".esd", ".squashfs", ".cramfs", ".jar", ".war", ".apk", ".xpi", ".epub", ".s7z"
+            ".zip", ".rar", ".7z", ".tar", ".gz", ".tgz", ".bz2", ".tb2", ".xz", ".txz", ".lz", ".tlz", ".z", ".lzma", ".lzo", ".ar", ".cpio", ".iso", ".dmg", ".wim", ".esd", ".squashfs", ".cramfs", ".jar", ".war", ".apk", ".xpi", ".epub", ".s7z"
         };
 
         private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase)
@@ -62,8 +63,16 @@ namespace FMMS.Managers
 
             resultCollection.Clear();
 
+            CreateFileMetadataParameters parameters = new(
+                    FilePathOrEntryKey: archivePath,
+                    AnalyzedRootPath: Path.GetDirectoryName(archivePath) ?? string.Empty,
+                    IsArchive: true,
+                    IsEntry: false,
+                    ArchivePath: string.Empty
+            );
+
             // 1. Добавляем сам архив как FileMetadata
-            FileMetadata archiveMetadata = await CreateFileMetadataAsync(archivePath, Path.GetDirectoryName(archivePath) ?? string.Empty, true, false, string.Empty);
+            FileMetadata archiveMetadata = await CreateFileMetadataAsync(parameters);
             resultCollection.Add(archiveMetadata);
             updateProgress($"Обработка архива: {Path.GetFileName(archivePath)}", 50); // Примерный прогресс
 
@@ -77,7 +86,7 @@ namespace FMMS.Managers
         {
             try
             {
-                using FileStream archiveStream = File.OpenRead(archivePath);
+                await using FileStream archiveStream = File.OpenRead(archivePath);
                 using IArchive archive = ArchiveFactory.Open(archiveStream);
 
                 async Task<Stream?> extractStreamFunc(string entryKey)
@@ -85,7 +94,7 @@ namespace FMMS.Managers
                     IArchiveEntry? entry = archive.Entries.FirstOrDefault(e => e.Key == entryKey && !e.IsDirectory);
                     if (entry != null)
                     {
-                        Stream entryStream = entry.OpenEntryStream();
+                        Stream entryStream = await entry.OpenEntryStreamAsync();
                         if (entryStream != null)
                         {
                             MemoryStream memoryStream = new();
@@ -115,16 +124,18 @@ namespace FMMS.Managers
                         continue;
                     }
 
-                    FileMetadata entryMetadata = await CreateFileMetadataAsync(
-                        entry.Key,
-                        Path.GetDirectoryName(archivePath) ?? string.Empty,
-                        false, // isArchive
-                        true,  // isEntry
-                        archivePath,
-                        entry.Size,
-                        entry.Size,
-                        extractStreamFunc
-                    );
+                    CreateFileMetadataParameters parameters = new(
+                    FilePathOrEntryKey: entry.Key,
+                    AnalyzedRootPath: Path.GetDirectoryName(archivePath) ?? string.Empty,
+                    IsArchive: false,
+                    IsEntry: true,
+                    ArchivePath: archivePath,
+                    entry.CompressedSize,
+                    entry.Size,
+                    extractStreamFunc
+            );
+
+                    FileMetadata entryMetadata = await CreateFileMetadataAsync(parameters);
 
                     resultCollection.Add(entryMetadata);
 
@@ -145,11 +156,19 @@ namespace FMMS.Managers
 
             if (IsArchiveFile(filePath))
             {
-                await ProcessArchiveFileAsync(filePath, (msg, val) => { }, msg => { }, shouldEnumerableFiles, resultCollection); // Простой прогресс для одиночного архива
+                await ProcessArchiveFileAsync(filePath, (_, _) => { }, _ => { }, shouldEnumerableFiles, resultCollection); // Простой прогресс для одиночного архива
                 return;
             }
 
-            FileMetadata fileMetadata = await CreateFileMetadataAsync(filePath, Path.GetDirectoryName(filePath) ?? string.Empty, false, false, string.Empty);
+            CreateFileMetadataParameters parameters = new(
+                    FilePathOrEntryKey: filePath,
+                    AnalyzedRootPath: Path.GetDirectoryName(filePath) ?? string.Empty,
+                    IsArchive: false,
+                    IsEntry: false,
+                    ArchivePath: string.Empty
+            );
+
+            FileMetadata fileMetadata = await CreateFileMetadataAsync(parameters);
             resultCollection.Add(fileMetadata);
 
             ApplyIndexing(resultCollection, shouldEnumerableFiles);
@@ -159,9 +178,9 @@ namespace FMMS.Managers
         {
             resultCollection.Clear();
 
-            List<string> allFiles = Directory.GetFiles(directoryPath, "*", SearchOption.AllDirectories).ToList();
-            List<string> archiveFiles = allFiles.Where(IsArchiveFile).ToList();
-            List<string> regularFiles = allFiles.Except(archiveFiles).ToList();
+            List<string> allFiles = [.. Directory.GetFiles(directoryPath, "*", SearchOption.AllDirectories)];
+            List<string> archiveFiles = [.. allFiles.Where(IsArchiveFile)];
+            List<string> regularFiles = [.. allFiles.Except(archiveFiles)];
 
             int totalItems = allFiles.Count;
 
@@ -179,7 +198,16 @@ namespace FMMS.Managers
                 updateProgressText($"Обработка файла {currentFileIndex} из {totalItems}: {fileName}");
                 updateProgress($"Обработка файла {currentFileIndex} из {totalItems}: {fileName}", (double)currentFileIndex / totalItems * 100);
 
-                FileMetadata fileMetadata = await CreateFileMetadataAsync(filePath, directoryPath, false, false, string.Empty);
+                CreateFileMetadataParameters parameters = new(
+                    FilePathOrEntryKey: filePath,
+
+                    AnalyzedRootPath: directoryPath,
+                    IsArchive: false,
+                    IsEntry: false,
+                    ArchivePath: string.Empty
+                );
+
+                FileMetadata fileMetadata = await CreateFileMetadataAsync(parameters);
                 resultCollection.Add(fileMetadata);
             }
 
@@ -191,7 +219,15 @@ namespace FMMS.Managers
                 updateProgressText($"Обработка архива {currentFileIndex} из {totalItems}: {archiveFileName}");
                 updateProgress($"Обработка архива {currentFileIndex} из {totalItems}: {archivePath}", (double)currentFileIndex / totalItems * 100);
 
-                FileMetadata archiveMetadata = await CreateFileMetadataAsync(archivePath, directoryPath, true, false, string.Empty);
+                CreateFileMetadataParameters parameters = new(
+                    FilePathOrEntryKey: archivePath,
+                    AnalyzedRootPath: directoryPath,
+                    IsArchive: true,
+                    IsEntry: false,
+                    ArchivePath: string.Empty
+                );
+
+                FileMetadata archiveMetadata = await CreateFileMetadataAsync(parameters);
                 resultCollection.Add(archiveMetadata);
 
                 if (shouldAnalyzeArchives)
@@ -203,128 +239,32 @@ namespace FMMS.Managers
             ApplyIndexing(resultCollection, shouldEnumerableFiles);
         }
 
-        private static async Task<FileMetadata> CreateFileMetadataAsync(
-            string filePathOrEntryKey,
-            string analyzedRootPath,
-            bool isArchive,
-            bool isEntry,
-            string archivePath = "",
-            long? compressedSize = null,
-            long? uncompressedSize = null,
-            Func<string, Task<Stream?>>? extractStreamFunc = null
-        )
+        /// <summary>
+        /// Асинхронно создает объект FileMetadata, анализируя файл или запись в архиве.
+        /// </summary>
+        private static async Task<FileMetadata> CreateFileMetadataAsync(CreateFileMetadataParameters parameters)
         {
-            int pagesCount = 0;
+            var (
+                filePathOrEntryKey,
+                analyzedRootPath,
+                isArchive,
+                isEntry,
+                archivePath,
+                compressedSizeBytes,
+                uncompressedSizeBytes,
+                extractStreamFunc
+            ) = parameters;
+
+            // Общие свойства
             string fileExtension = Path.GetExtension(filePathOrEntryKey);
-            string sha256 = string.Empty;
             string fileName = Path.GetFileName(filePathOrEntryKey);
-            string fileRelativePath;
-            string? folderRelativePath;
-            long fileSizeBytes = uncompressedSize ?? 0;
 
-            if (isEntry)
-            {
-                string archiveRelativePathFromRoot = '\\' + Path.GetRelativePath(analyzedRootPath, archivePath).Replace('/', Path.DirectorySeparatorChar);
-                string archivePathWithoutExtension = Path.ChangeExtension(archiveRelativePathFromRoot, null);
-                string entryRelativePath = filePathOrEntryKey.Replace('/', Path.DirectorySeparatorChar);
-                fileRelativePath = archivePathWithoutExtension + Path.DirectorySeparatorChar + entryRelativePath;
+            long fileSizeBytes = isEntry ? uncompressedSizeBytes ?? 0 : new FileInfo(filePathOrEntryKey).Length;
 
-                string? entryDir = Path.GetDirectoryName(entryRelativePath);
-                folderRelativePath = string.IsNullOrEmpty(entryDir) ? archivePathWithoutExtension : archivePathWithoutExtension + Path.DirectorySeparatorChar + entryDir;
-
-                if (extractStreamFunc != null)
-                {
-                    using Stream? entryStream = await extractStreamFunc(filePathOrEntryKey);
-                    if (entryStream != null)
-                    {
-                        try
-                        {
-                            if (entryStream.CanSeek)
-                            {
-                                sha256 = await FilesHashManager.GetSha256HashAsync(entryStream);
-                                entryStream.Position = 0;
-                            }
-                            else
-                            {
-                                GrowlsManager.ShowErrorMsg($"Поток для {filePathOrEntryKey} не поддерживает Seek.");
-                                sha256 = string.Empty;
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            sha256 = string.Empty;
-                            GrowlsManager.ShowErrorMsg(ex, $"Ошибка вычисления SHA256 для: {filePathOrEntryKey} из архива {archivePath}");
-                        }
-
-                        if (fileExtension.Equals(".pdf", StringComparison.OrdinalIgnoreCase))
-                        {
-                            try
-                            {
-                                using PdfDocument pdfDoc = new(new PdfReader(entryStream));
-                                pagesCount = pdfDoc.GetNumberOfPages();
-                            }
-                            catch (Exception ex)
-                            {
-                                pagesCount = -1;
-                                GrowlsManager.ShowErrorMsg(ex, $"Ошибка чтения PDF: {filePathOrEntryKey} из архива {archivePath}");
-                            }
-                        }
-
-                        if (pagesCount == 0 && IsImage(filePathOrEntryKey))
-                        {
-                            pagesCount = 1;
-                        }
-                    }
-                    else
-                    {
-                        sha256 = string.Empty;
-                        pagesCount = -1;
-                        GrowlsManager.ShowErrorMsg($"Не удалось извлечь поток: {filePathOrEntryKey} из архива {archivePath}");
-                    }
-                }
-                else
-                {
-                    sha256 = string.Empty;
-                    pagesCount = -1;
-                    GrowlsManager.ShowErrorMsg($"Невозможно обработать: функция извлечения потока отсутствует для: {filePathOrEntryKey} из архива {archivePath}");
-                }
-            }
-            else
-            {
-                // Для обычных файлов получаем размер через FileInfo
-                try
-                {
-                    FileInfo fileInfo = new(filePathOrEntryKey);
-                    fileSizeBytes = fileInfo.Length;
-                }
-                catch (Exception ex)
-                {
-                    GrowlsManager.ShowErrorMsg(ex, $"Ошибка получения размера файла: {filePathOrEntryKey}");
-                    fileSizeBytes = 0; // Или -1, если нужно отличать ошибки
-                }
-
-                sha256 = await FilesHashManager.GetSha256HashAsync(filePathOrEntryKey);
-                fileRelativePath = '\\' + Path.GetRelativePath(analyzedRootPath, filePathOrEntryKey);
-                folderRelativePath = Path.GetDirectoryName(fileRelativePath);
-
-                if (fileExtension.Equals(".pdf", StringComparison.OrdinalIgnoreCase))
-                {
-                    try
-                    {
-                        using PdfDocument pdfDoc = new(new PdfReader(filePathOrEntryKey));
-                        pagesCount = pdfDoc.GetNumberOfPages();
-                    }
-                    catch (Exception ex)
-                    {
-                        GrowlsManager.ShowErrorMsg(ex);
-                        pagesCount = -1;
-                    }
-                }
-                else if (IsImage(filePathOrEntryKey))
-                {
-                    pagesCount = 1;
-                }
-            }
+            // Определение свойств, зависящих от типа (архив/запись/обычный файл)
+            var (sha256, pagesCount, fileRelativePath, folderRelativePath) = isEntry
+                ? await ProcessArchiveEntryAsync(filePathOrEntryKey, analyzedRootPath, archivePath, fileExtension, extractStreamFunc)
+                : await ProcessRegularFileAsync(filePathOrEntryKey, analyzedRootPath, fileExtension);
 
             return new FileMetadata
             {
@@ -335,13 +275,161 @@ namespace FMMS.Managers
                 FileExtension = fileExtension,
                 FileSHA256 = sha256,
                 PagesCount = pagesCount,
-                FileSizeBytes = fileSizeBytes, // Добавляем размер
+                FileSizeBytes = fileSizeBytes,
                 IsArchiveFile = isArchive,
                 IsArchiveEntry = isEntry,
                 ArchiveFilePath = archivePath,
-                CompressedSize = compressedSize,
-                UncompressedSize = uncompressedSize
+                CompressedSizeBytes = compressedSizeBytes,
+                UncompressedSizeBytes = uncompressedSizeBytes
             };
+        }
+
+        /// <summary>
+        /// Обрабатывает запись внутри архива.
+        /// </summary>
+        private static async Task<(string sha256, int pagesCount, string fileRelativePath, string? folderRelativePath)> ProcessArchiveEntryAsync(
+            string entryKey,
+            string analyzedRootPath,
+            string archivePath,
+            string fileExtension,
+            Func<string, Task<Stream?>>? extractStreamFunc)
+        {
+            // Вычисление относительных путей для записи в архиве
+            string archiveRelativePathFromRoot = '\\' + Path.GetRelativePath(analyzedRootPath, archivePath).Replace('/', Path.DirectorySeparatorChar);
+            string archivePathWithoutExtension = Path.ChangeExtension(archiveRelativePathFromRoot, null);
+            string entryRelativePath = entryKey.Replace('/', Path.DirectorySeparatorChar);
+            string fileRelativePath = archivePathWithoutExtension + Path.DirectorySeparatorChar + entryRelativePath;
+
+            string? entryDir = Path.GetDirectoryName(entryRelativePath);
+            string? folderRelativePath = string.IsNullOrEmpty(entryDir) ? archivePathWithoutExtension : archivePathWithoutExtension + Path.DirectorySeparatorChar + entryDir;
+
+            // Инициализация результатов
+            string sha256 = string.Empty;
+            int pagesCount;
+
+            if (extractStreamFunc == null)
+            {
+                GrowlsManager.ShowErrorMsg($"Невозможно обработать: функция извлечения потока отсутствует для: {entryKey} из архива {archivePath}");
+                return (sha256, -1, fileRelativePath, folderRelativePath); // Возвращаем ошибку
+            }
+
+            await using Stream? entryStream = await extractStreamFunc(entryKey);
+            if (entryStream == null)
+            {
+                GrowlsManager.ShowErrorMsg($"Не удалось извлечь поток: {entryKey} из архива {archivePath}");
+                return (string.Empty, -1, fileRelativePath, folderRelativePath); // Возвращаем ошибку
+            }
+
+            // Вычисление SHA256
+            sha256 = await CalculateSHA256ForStreamAsync(entryStream);
+
+            // Определение количества страниц
+            pagesCount = await DeterminePageCountForStreamAsync(entryStream, fileExtension, entryKey, archivePath);
+
+            return (sha256, pagesCount, fileRelativePath, folderRelativePath);
+        }
+
+        /// <summary>
+        /// Обрабатывает обычный файл на диске.
+        /// </summary>
+        private static async Task<(string sha256, int pagesCount, string fileRelativePath, string? folderRelativePath)> ProcessRegularFileAsync(
+            string filePath,
+            string analyzedRootPath,
+            string fileExtension)
+        {
+            // Вычисление относительных путей
+            string fileRelativePath = '\\' + Path.GetRelativePath(analyzedRootPath, filePath);
+            string? folderRelativePath = Path.GetDirectoryName(fileRelativePath);
+
+            // Вычисление SHA256
+            string sha256 = await FilesHashManager.GetSha256HashAsync(filePath);
+
+            // Определение количества страниц
+            int pagesCount = await DeterminePageCountForFileAsync(filePath, fileExtension);
+
+            return (sha256, pagesCount, fileRelativePath, folderRelativePath);
+        }
+
+        /// <summary>
+        /// Вычисляет SHA256 для потока, сбросив позицию в начало после.
+        /// </summary>
+        private static async Task<string> CalculateSHA256ForStreamAsync(Stream stream)
+        {
+            try
+            {
+                if (stream.CanSeek)
+                {
+                    string hash = await FilesHashManager.GetSha256HashAsync(stream);
+                    stream.Position = 0; // Сброс позиции для последующего чтения
+                    return hash;
+                }
+                else
+                {
+                    GrowlsManager.ShowErrorMsg("Поток не поддерживает Seek, невозможно вычислить SHA256.");
+                    return string.Empty;
+                }
+            }
+            catch (Exception ex)
+            {
+                GrowlsManager.ShowErrorMsg(ex, "Ошибка вычисления SHA256 для потока.");
+                return string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// Определяет количество страниц для потока (PDF или изображение).
+        /// </summary>
+        private static async Task<int> DeterminePageCountForStreamAsync(Stream stream, string fileExtension, string entryKey, string archivePath)
+        {
+            int pagesCount = 0;
+
+            if (fileExtension.Equals(".pdf", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    using PdfDocument pdfDoc = new(new PdfReader(stream));
+                    pagesCount = pdfDoc.GetNumberOfPages();
+                }
+                catch (Exception ex)
+                {
+                    GrowlsManager.ShowErrorMsg(ex, $"Ошибка чтения PDF: {entryKey} из архива {archivePath}");
+                    pagesCount = -1;
+                }
+            }
+            else if (IsImage(entryKey))
+            {
+                pagesCount = 1; // Изображение считается за 1 страницу
+            }
+
+            return pagesCount;
+        }
+
+        /// <summary>
+        /// Определяет количество страниц для файла на диске (PDF или изображение).
+        /// </summary>
+        private static async Task<int> DeterminePageCountForFileAsync(string filePath, string fileExtension)
+        {
+            int pagesCount = 0;
+
+            if (fileExtension.Equals(".pdf", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    using PdfDocument pdfDoc = new(new PdfReader(filePath));
+                    pagesCount = pdfDoc.GetNumberOfPages();
+                }
+                catch (Exception ex)
+                {
+                    GrowlsManager.ShowErrorMsg(ex, $"Ошибка чтения PDF: {filePath}");
+                    pagesCount = -1;
+                }
+            }
+            else if (IsImage(filePath))
+            {
+                pagesCount = 1; // Изображение считается за 1 страницу
+            }
+
+            return pagesCount;
         }
 
         private static void ApplyIndexing(ObservableCollection<FileMetadata> collection, bool shouldEnumerableFiles)

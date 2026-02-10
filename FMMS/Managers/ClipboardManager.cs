@@ -4,6 +4,7 @@ using FMMS.Items;
 using FMMS.Models;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -19,10 +20,8 @@ namespace FMMS.Managers
         }
 
         /// <summary>
-        /// Копирует пути выбранных файлов в буфер обмена.
+        /// Копирует пути выбранных файлов в буфер обмена в формате, определяемом настройками столбцов.
         /// </summary>
-        /// <param name="selectedFiles">Коллекция выбранных файлов.</param>
-        /// <param name="topLevel">Экземпляр TopLevel для доступа к буферу обмена.</param>
         public static async Task CopyAsTextAsync(IList<FileMetadata> itemsToProcess, string selectedFolderPath)
         {
             try
@@ -45,10 +44,13 @@ namespace FMMS.Managers
             }
         }
 
+        /// <summary>
+        /// Формирует строку с данными файлов, основываясь на настройках видимости столбцов.
+        /// </summary>
         public static async Task<string> CompileTextAsync(
-     IList<FileMetadata> itemsToProcess,
-     string selectedFolderPath,
-     ColumnSettingsItem? columnSettings = null)
+            IList<FileMetadata> itemsToProcess,
+            string selectedFolderPath,
+            ColumnSettingsItem? columnSettings = null)
         {
             columnSettings ??= SettingsManager.CurrentSettings.ColumnSettings;
 
@@ -58,247 +60,165 @@ namespace FMMS.Managers
                 return string.Empty;
             }
 
-            StringBuilder sb = new();
+            var sb = new StringBuilder();
             sb.AppendLine($"Путь до проанализированной папки: {selectedFolderPath}");
             sb.AppendLine();
 
-            // --- Новый блок: Определение видимых столбцов и их максимальных ширин ---
-            int maxIndexWidth = 0;
-            int maxFileNameWidth = 0;
-            int maxFolderRelativePathWidth = 0;
-            int maxPagesCountWidth = 0;
-            int maxFileExtensionWidth = 0;
-            int maxFileSHA256Width = 0;
-            int maxFilePathWidth = 0;
-            int maxFileRelativePathWidth = 0;
-            int maxArchiveFileWidth = 0;
-            int maxArchiveEntryWidth = 0;
-            int maxArchiveFilePathWidth = 0;
-            int maxCompressedSizeWidth = 0;
-            int maxUncompressedSizeWidth = 0;
-            int maxFileSizeMBWidth = 0;
-            int maxFileSizeBytesWidth = 0;
+            // Вычисляем максимальные длины значений для каждого активного столбца
+            var maxWidths = CalculateMaxWidths(itemsToProcess, columnSettings);
 
-            // Проходим по всем элементам, чтобы найти максимальную длину для каждого видимого столбца
-            foreach (FileMetadata item in itemsToProcess)
+            // Формируем строки для каждого элемента
+            foreach (var item in itemsToProcess)
             {
-                if (columnSettings.IsIndexColumnVisible && item.Index.HasValue)
-                {
-                    maxIndexWidth = Math.Max(maxIndexWidth, item.Index.Value.ToString().Length);
-                }
-                if (columnSettings.IsFileNameColumnVisible)
-                {
-                    maxFileNameWidth = Math.Max(maxFileNameWidth, item.FileName.Length);
-                }
-                if (columnSettings.IsFolderRelativePathColumnVisible)
-                {
-                    maxFolderRelativePathWidth = Math.Max(maxFolderRelativePathWidth, item.FolderRelativePath.Length);
-                }
-                if (columnSettings.IsPagesCountColumnVisible)
-                {
-                    maxPagesCountWidth = Math.Max(maxPagesCountWidth, item.PagesCount.ToString().Length);
-                }
-                if (columnSettings.IsFileExtensionColumnVisible)
-                {
-                    maxFileExtensionWidth = Math.Max(maxFileExtensionWidth, item.FileExtension.Length);
-                }
-                if (columnSettings.IsFileSHA256ColumnVisible)
-                {
-                    maxFileSHA256Width = Math.Max(maxFileSHA256Width, item.FileSHA256.Length);
-                }
-                if (columnSettings.IsFilePathColumnVisible)
-                {
-                    maxFilePathWidth = Math.Max(maxFilePathWidth, item.FilePath.Length);
-                }
-                if (columnSettings.IsFileRelativePathColumnVisible)
-                {
-                    maxFileRelativePathWidth = Math.Max(maxFileRelativePathWidth, item.FileRelativePath.Length);
-                }
-                if (columnSettings.IsArchiveFileColumnVisible)
-                {
-                    maxArchiveFileWidth = Math.Max(maxArchiveFileWidth, item.IsArchiveFile.ToString().Length);
-                }
-                if (columnSettings.IsArchiveEntryColumnVisible)
-                {
-                    maxArchiveEntryWidth = Math.Max(maxArchiveEntryWidth, item.IsArchiveEntry.ToString().Length);
-                }
-                if (columnSettings.IsArchiveFilePathColumnVisible)
-                {
-                    maxArchiveFilePathWidth = Math.Max(maxArchiveFilePathWidth, item.ArchiveFilePath.Length);
-                }
-                if (columnSettings.IsCompressedSizeColumnVisible && item.CompressedSize.HasValue)
-                {
-                    maxCompressedSizeWidth = Math.Max(maxCompressedSizeWidth, item.CompressedSize.Value.ToString().Length);
-                }
-                if (columnSettings.IsUncompressedSizeColumnVisible && item.UncompressedSize.HasValue)
-                {
-                    maxUncompressedSizeWidth = Math.Max(maxUncompressedSizeWidth, item.UncompressedSize.Value.ToString().Length);
-                }
-                if (columnSettings.IsFileSizeMBColumnVisible)
-                {
-                    // Учитываем форматирование с 2 знаками после запятой
-                    maxFileSizeMBWidth = Math.Max(maxFileSizeMBWidth, item.FileSizeMB.ToString("F2").Length);
-                }
-                if (columnSettings.IsFileSizeBytesColumnVisible)
-                {
-                    maxFileSizeBytesWidth = Math.Max(maxFileSizeBytesWidth, item.FileSizeBytes.ToString().Length);
-                }
-            }
-
-            // Устанавливаем минимальную ширину, если столбец видим, но все значения пустые/нулевые
-            if (columnSettings.IsIndexColumnVisible)
-            {
-                maxIndexWidth = Math.Max(0, maxIndexWidth);
-            }
-
-            if (columnSettings.IsFileNameColumnVisible)
-            {
-                maxFileNameWidth = Math.Max(0, maxFileNameWidth); // Пример минимальной ширины
-            }
-
-            if (columnSettings.IsFolderRelativePathColumnVisible)
-            {
-                maxFolderRelativePathWidth = Math.Max(0, maxFolderRelativePathWidth);
-            }
-
-            if (columnSettings.IsPagesCountColumnVisible)
-            {
-                maxPagesCountWidth = Math.Max(0, maxPagesCountWidth);
-            }
-
-            if (columnSettings.IsFileExtensionColumnVisible)
-            {
-                maxFileExtensionWidth = Math.Max(0, maxFileExtensionWidth);
-            }
-
-            if (columnSettings.IsFileSHA256ColumnVisible)
-            {
-                maxFileSHA256Width = Math.Max(0, maxFileSHA256Width);
-            }
-
-            if (columnSettings.IsFilePathColumnVisible)
-            {
-                maxFilePathWidth = Math.Max(0, maxFilePathWidth);
-            }
-
-            if (columnSettings.IsFileRelativePathColumnVisible)
-            {
-                maxFileRelativePathWidth = Math.Max(0, maxFileRelativePathWidth);
-            }
-
-            if (columnSettings.IsArchiveFileColumnVisible)
-            {
-                maxArchiveFileWidth = Math.Max(0, maxArchiveFileWidth);
-            }
-
-            if (columnSettings.IsArchiveEntryColumnVisible)
-            {
-                maxArchiveEntryWidth = Math.Max(0, maxArchiveEntryWidth);
-            }
-
-            if (columnSettings.IsArchiveFilePathColumnVisible)
-            {
-                maxArchiveFilePathWidth = Math.Max(0, maxArchiveFilePathWidth);
-            }
-
-            if (columnSettings.IsCompressedSizeColumnVisible)
-            {
-                maxCompressedSizeWidth = Math.Max(0, maxCompressedSizeWidth);
-            }
-
-            if (columnSettings.IsUncompressedSizeColumnVisible)
-            {
-                maxUncompressedSizeWidth = Math.Max(0, maxUncompressedSizeWidth);
-            }
-
-            if (columnSettings.IsFileSizeMBColumnVisible)
-            {
-                maxFileSizeMBWidth = Math.Max(0, maxFileSizeMBWidth); // Пример, учитывая "F2"
-            }
-
-            if (columnSettings.IsFileSizeBytesColumnVisible)
-            {
-                maxFileSizeBytesWidth = Math.Max(0, maxFileSizeBytesWidth);
-            }
-
-            // --- Основной цикл: Формирование строки для каждого файла с выравниванием ---
-            foreach (FileMetadata fileMetadata in itemsToProcess)
-            {
-                List<string> parts = [];
-
-                if (columnSettings.IsIndexColumnVisible && fileMetadata.Index.HasValue)
-                {
-                    parts.Add($"Индекс: {fileMetadata.Index?.ToString().PadRight(maxIndexWidth)}");
-                }
-                if (columnSettings.IsFileNameColumnVisible)
-                {
-                    parts.Add($"Имя файла: {fileMetadata.FileName.PadRight(maxFileNameWidth)}");
-                }
-                if (columnSettings.IsFolderRelativePathColumnVisible)
-                {
-                    parts.Add($"Путь к файлу: {fileMetadata.FolderRelativePath.PadRight(maxFolderRelativePathWidth)}");
-                }
-                if (columnSettings.IsPagesCountColumnVisible)
-                {
-                    parts.Add($"Кол-во стр: {fileMetadata.PagesCount.ToString().PadRight(maxPagesCountWidth)}");
-                }
-                if (columnSettings.IsFileExtensionColumnVisible)
-                {
-                    parts.Add($"Расш: {fileMetadata.FileExtension.PadRight(maxFileExtensionWidth)}");
-                }
-                if (columnSettings.IsFileSHA256ColumnVisible)
-                {
-                    parts.Add($"SHA256: {fileMetadata.FileSHA256.PadRight(maxFileSHA256Width)}");
-                }
-                if (columnSettings.IsFilePathColumnVisible)
-                {
-                    parts.Add($"Полный путь: {fileMetadata.FilePath.PadRight(maxFilePathWidth)}");
-                }
-                if (columnSettings.IsFileRelativePathColumnVisible)
-                {
-                    parts.Add($"Отн. путь: {fileMetadata.FileRelativePath.PadRight(maxFileRelativePathWidth)}");
-                }
-                if (columnSettings.IsArchiveFileColumnVisible)
-                {
-                    parts.Add($"Архив: {fileMetadata.IsArchiveFile.ToString().PadRight(maxArchiveFileWidth)}");
-                }
-                if (columnSettings.IsArchiveEntryColumnVisible)
-                {
-                    parts.Add($"Зап.арх: {fileMetadata.IsArchiveEntry.ToString().PadRight(maxArchiveEntryWidth)}");
-                }
-                if (columnSettings.IsArchiveFilePathColumnVisible)
-                {
-                    parts.Add($"Путь арх: {fileMetadata.ArchiveFilePath.PadRight(maxArchiveFilePathWidth)}");
-                }
-                if (columnSettings.IsCompressedSizeColumnVisible && fileMetadata.CompressedSize.HasValue)
-                {
-                    parts.Add($"Сжатый: {fileMetadata.CompressedSize.Value.ToString().PadRight(maxCompressedSizeWidth)}");
-                }
-                if (columnSettings.IsUncompressedSizeColumnVisible && fileMetadata.UncompressedSize.HasValue)
-                {
-                    parts.Add($"Несжатый: {fileMetadata.UncompressedSize.Value.ToString().PadRight(maxUncompressedSizeWidth)}");
-                }
-                if (columnSettings.IsFileSizeMBColumnVisible)
-                {
-                    parts.Add($"Размер МБ: {fileMetadata.FileSizeMB.ToString("F2").PadRight(maxFileSizeMBWidth)}");
-                }
-                if (columnSettings.IsFileSizeBytesColumnVisible)
-                {
-                    parts.Add($"Размер байт: {fileMetadata.FileSizeBytes.ToString().PadRight(maxFileSizeBytesWidth)}");
-                }
-
-                // Соединяем видимые колонки для текущего файла в одну строку
-                sb.AppendLine(string.Join("; ", parts));
+                var lineParts = BuildLineParts(item, columnSettings, maxWidths);
+                sb.AppendJoin("; ", lineParts).AppendLine();
             }
 
             return sb.ToString();
         }
 
         /// <summary>
+        /// Вычисляет максимальную длину значений для каждого столбца среди всех элементов.
+        /// </summary>
+        private static Dictionary<ColumnSettingType, int> CalculateMaxWidths(
+            IList<FileMetadata> itemsToProcess,
+            ColumnSettingsItem columnSettings)
+        {
+            var maxWidths = new Dictionary<ColumnSettingType, int>();
+
+            // Инициализируем словарь нулевыми значениями для видимых столбцов
+            foreach (var settingType in Enum.GetValues<ColumnSettingType>())
+            {
+                if (IsColumnVisible(columnSettings, settingType))
+                {
+                    maxWidths[settingType] = 0;
+                }
+            }
+
+            // Проходим по каждому элементу и обновляем максимальные длины
+            foreach (var item in itemsToProcess)
+            {
+                // Итерируемся по всем типам столбцов, которые могут быть видимы
+                foreach (var type in Enum.GetValues<ColumnSettingType>())
+                {
+                    // Проверяем, видим ли текущий столбец
+                    if (IsColumnVisible(columnSettings, type))
+                    {
+                        // Получаем значение для этого столбца у текущего элемента
+                        string value = GetValueForColumn(item, type);
+                        // Вычисляем длину значения (если оно не null, используем длину строки, иначе 0)
+                        int valueLength = value?.Length ?? 0;
+
+                        // Обновляем максимальную ширину для этого типа столбца, если текущая длина больше
+                        if (maxWidths.TryGetValue(type, out int value1))
+                        {
+                            maxWidths[type] = Math.Max(value1, valueLength);
+                        }
+                    }
+                }
+            }
+
+            return maxWidths;
+        }
+
+        /// <summary>
+        /// Проверяет, видим ли столбец по его типу.
+        /// </summary>
+        private static bool IsColumnVisible(ColumnSettingsItem settings, ColumnSettingType type) => type switch
+        {
+            ColumnSettingType.Index => settings.IsIndexColumnVisible,
+            ColumnSettingType.FileName => settings.IsFileNameColumnVisible,
+            ColumnSettingType.FolderRelativePath => settings.IsFolderRelativePathColumnVisible,
+            ColumnSettingType.PagesCount => settings.IsPagesCountColumnVisible,
+            ColumnSettingType.FileExtension => settings.IsFileExtensionColumnVisible,
+            ColumnSettingType.FileSHA256 => settings.IsFileSHA256ColumnVisible,
+            ColumnSettingType.FilePath => settings.IsFilePathColumnVisible,
+            ColumnSettingType.FileRelativePath => settings.IsFileRelativePathColumnVisible,
+            ColumnSettingType.ArchiveFile => settings.IsArchiveFileColumnVisible,
+            ColumnSettingType.ArchiveEntry => settings.IsArchiveEntryColumnVisible,
+            ColumnSettingType.ArchiveFilePath => settings.IsArchiveFilePathColumnVisible,
+            ColumnSettingType.CompressedSize => settings.IsCompressedSizeColumnVisible,
+            ColumnSettingType.UncompressedSize => settings.IsUncompressedSizeColumnVisible,
+            ColumnSettingType.FileSizeMB => settings.IsFileSizeMBColumnVisible,
+            ColumnSettingType.FileSizeBytes => settings.IsFileSizeBytesColumnVisible,
+            _ => false,
+        };
+
+        /// <summary>
+        /// Получает строковое значение для конкретного столбца элемента.
+        /// </summary>
+        private static string GetValueForColumn(FileMetadata item, ColumnSettingType type) => type switch
+        {
+            ColumnSettingType.Index => item.Index?.ToString() ?? "",
+            ColumnSettingType.FileName => item.FileName,
+            ColumnSettingType.FolderRelativePath => item.FolderRelativePath,
+            ColumnSettingType.PagesCount => item.PagesCount.ToString(),
+            ColumnSettingType.FileExtension => item.FileExtension,
+            ColumnSettingType.FileSHA256 => item.FileSHA256,
+            ColumnSettingType.FilePath => item.FilePath,
+            ColumnSettingType.FileRelativePath => item.FileRelativePath,
+            ColumnSettingType.ArchiveFile => item.IsArchiveFile.ToString(),
+            ColumnSettingType.ArchiveEntry => item.IsArchiveEntry.ToString(),
+            ColumnSettingType.ArchiveFilePath => item.ArchiveFilePath,
+            ColumnSettingType.CompressedSize => item.CompressedSizeBytes?.ToString() ?? "",
+            ColumnSettingType.UncompressedSize => item.UncompressedSizeBytes?.ToString() ?? "",
+            ColumnSettingType.FileSizeMB => item.FileSizeMB.ToString("F2"),
+            ColumnSettingType.FileSizeBytes => item.FileSizeBytes.ToString(),
+            _ => "",
+        };
+
+        /// <summary>
+        /// Формирует список частей строки для одного элемента на основе настроек и ширин.
+        /// </summary>
+        private static List<string> BuildLineParts(
+            FileMetadata item,
+            ColumnSettingsItem columnSettings,
+            Dictionary<ColumnSettingType, int> maxWidths)
+        {
+            var parts = new List<string>();
+            var labels = GetLabels();
+
+            // Итерируемся по всем возможным типам столбцов в определенном порядке
+            foreach (var type in Enum.GetValues<ColumnSettingType>())
+            {
+                if (IsColumnVisible(columnSettings, type))
+                {
+                    string value = GetValueForColumn(item, type);
+                    int maxWidth = maxWidths.TryGetValue(type, out int width) ? width : 0;
+                    // Используем PadRight только если значение не пустое, иначе просто добавляем метку
+                    string paddedValue = string.IsNullOrEmpty(value) ? "" : value.PadRight(maxWidth);
+                    parts.Add($"{labels[type]}: {paddedValue}");
+                }
+            }
+
+            return parts;
+        }
+
+        /// <summary>
+        /// Возвращает словарь с метками для столбцов.
+        /// </summary>
+        private static Dictionary<ColumnSettingType, string> GetLabels() => new()
+        {
+            { ColumnSettingType.Index, "Индекс" },
+            { ColumnSettingType.FileName, "Имя файла" },
+            { ColumnSettingType.FolderRelativePath, "Путь к файлу" },
+            { ColumnSettingType.PagesCount, "Кол-во стр" },
+            { ColumnSettingType.FileExtension, "Расш" },
+            { ColumnSettingType.FileSHA256, "SHA256" },
+            { ColumnSettingType.FilePath, "Полный путь" },
+            { ColumnSettingType.FileRelativePath, "Отн. путь" },
+            { ColumnSettingType.ArchiveFile, "Архив" },
+            { ColumnSettingType.ArchiveEntry, "Зап.арх" },
+            { ColumnSettingType.ArchiveFilePath, "Путь арх" },
+            { ColumnSettingType.CompressedSize, "Сжатый" },
+            { ColumnSettingType.UncompressedSize, "Несжатый" },
+            { ColumnSettingType.FileSizeMB, "Размер МБ" },
+            { ColumnSettingType.FileSizeBytes, "Размер байт" },
+        };
+
+        /// <summary>
         /// Копирует данные выбранных файлов в формате TSV (Tab-Separated Values) в буфер обмена.
         /// </summary>
-        /// <param name="selectedFiles">Коллекция выбранных файлов.</param>
-        /// <param name="topLevel">Экземпляр TopLevel для доступа к буферу обмена.</param>
         public static async Task CopyAsTsvAsync(IList<FileMetadata> itemsToProcess, string selectedFolderPathMsg)
         {
             if (itemsToProcess == null || itemsToProcess.Count == 0)
@@ -307,7 +227,7 @@ namespace FMMS.Managers
                 return;
             }
 
-            StringBuilder sb = new();
+            var sb = new StringBuilder();
 
             // Добавляем путь к выбранной папке
             sb.AppendLine(selectedFolderPathMsg);
@@ -317,7 +237,7 @@ namespace FMMS.Managers
             sb.AppendLine("FileName\tFolderRelativePath\tPagesCount\tFileExtension\tFileSHA256");
 
             // Данные строк
-            foreach (FileMetadata fileMetadata in itemsToProcess)
+            foreach (var fileMetadata in itemsToProcess)
             {
                 sb.AppendLine($"{fileMetadata.FileName}\t{fileMetadata.FolderRelativePath}\t{fileMetadata.PagesCount}\t{fileMetadata.FileExtension}\t{fileMetadata.FileSHA256}");
             }
@@ -340,5 +260,27 @@ namespace FMMS.Managers
                 GrowlsManager.ShowErrorMsg($"Ошибка копирования как TSV: {ex.Message}");
             }
         }
+    }
+
+    /// <summary>
+    /// Перечисление для типов столбцов, используемых в настройках и логике формирования строк.
+    /// </summary>
+    internal enum ColumnSettingType
+    {
+        Index,
+        FileName,
+        FolderRelativePath,
+        PagesCount,
+        FileExtension,
+        FileSHA256,
+        FilePath,
+        FileRelativePath,
+        ArchiveFile,
+        ArchiveEntry,
+        ArchiveFilePath,
+        CompressedSize,
+        UncompressedSize,
+        FileSizeMB,
+        FileSizeBytes,
     }
 }

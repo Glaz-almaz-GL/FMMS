@@ -1,7 +1,9 @@
 using Avalonia.Controls;
 using Avalonia.Input;
+using FMMS.Items;
 using FMMS.ViewModels;
 using Huskui.Avalonia.Controls;
+using System.Collections.ObjectModel;
 using System.Linq;
 
 namespace FMMS.Views // Укажите ваше пространство имён
@@ -29,39 +31,75 @@ namespace FMMS.Views // Укажите ваше пространство имён
             }
         }
 
+        private async void DataGrid_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (DataContext is HomeViewModel viewModel && sender is DataGrid)
+            {
+                // Проверяем, есть ли выделенные элементы
+                ObservableCollection<FileMetadata> selectedItems = viewModel.SelectedFiles;
+                if (!selectedItems.Any())
+                {
+                    return;
+                }
+
+                // Определяем комбинацию клавиш
+                if (e.KeyModifiers == KeyModifiers.Control && e.Key == Key.C)
+                {
+                    // Ctrl + C - CopySelectedItemsAsync
+                    e.Handled = true;
+                    await viewModel.CopySelectedItemsAsync();
+                }
+                else if (e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift) && e.Key == Key.C)
+                {
+                    // Ctrl + Shift + C - CopyAsTsvAsync
+                    e.Handled = true;
+                    await viewModel.CopyAsTsvAsync();
+                }
+                else if (e.KeyModifiers == KeyModifiers.Control && e.Key == Key.O)
+                {
+                    // Ctrl + O - OpenFile
+                    e.Handled = true;
+                    viewModel.OpenFile();
+                }
+                else if (e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift) && e.Key == Key.O)
+                {
+                    // Ctrl + Shift + O - OpenContainingFolder
+                    e.Handled = true;
+                    viewModel.OpenContainingFolder();
+                }
+                else if (e.KeyModifiers == KeyModifiers.Control && e.Key == Key.P)
+                {
+                    // Ctrl + P - ShowFileProperties
+                    e.Handled = true;
+                    viewModel.ShowFileProperties();
+                }
+            }
+        }
+
         private async void FilesDataGrid_CopyingRowClipboardContent(object sender, DataGridRowClipboardEventArgs e)
         {
-            // Проверяем, нажаты ли Ctrl и C одновременно
             e.ClipboardRowContent.Clear();
 
-            // Получаем выделенные элементы из DataGrid
-            // Предположим, ваш DataGrid привязан к свойству ItemsSource,
-            // и вы используете SelectionMode, позволяющий множественный выбор
             if (DataContext is HomeViewModel viewModel && sender is DataGrid && viewModel.SelectedFiles.Any())
             {
                 await viewModel.CopySelectedItemsAsync();
             }
         }
 
-        // Метод-обработчик для DragOver
         private void OnDragOver(object? sender, DragEventArgs e)
         {
-            // Получаем ViewModel и вызываем её метод
             if (DataContext is HomeViewModel)
             {
-                HomeViewModel.OnDragOver(e); // Вызываем метод в ViewModel
+                HomeViewModel.OnDragOver(e);
             }
         }
 
         // Метод-обработчик для Drop
         private void OnDrop(object? sender, DragEventArgs e)
         {
-            // Получаем ViewModel
             if (DataContext is HomeViewModel vm)
             {
-                // Вызываем асинхронный метод из ViewModel, но не ждем его здесь.
-                // Avalonia не ждет завершения async обработчика событий.
-                _ = vm.OnDropAsync(e); // Используем оператор отбрасывания, чтобы избежать предупреждения CS4014
+                _ = vm.OnDropAsync(e);
             }
         }
     }

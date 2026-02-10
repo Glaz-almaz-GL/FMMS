@@ -25,6 +25,7 @@ public partial class MainViewModel : ViewModelBase
     {
         // Создаем страницы заранее
         HomePage homePage = new();
+        DiskExplorerPage diskExplorerPage = new();
         SettingsPage settingsPage = new();
         AboutPage aboutPage = new();
 
@@ -32,12 +33,20 @@ public partial class MainViewModel : ViewModelBase
         [
                 new NavigationItem()
                 {
-                    Title = "Главная",
-                    Description = "Основная страница приложения",
-                    Icon = Symbol.Home,
+                    Title = "Анализ файлов",
+                    Description = "Анализ файлов в выбранной директории",
+                    Icon = Symbol.FolderSearch,
                     IsNew = false,
                     IsUpdated = false,
                     NavigationPage = homePage
+                },
+                new NavigationItem(){
+                    Title = "Анализ дисков",
+                    Description = "Анализ всех дисков устройства",
+                    Icon = Symbol.HardDrive,
+                    IsNew = false,
+                    IsUpdated = false,
+                    NavigationPage = diskExplorerPage
                 },
                 new NavigationItem()
                 {

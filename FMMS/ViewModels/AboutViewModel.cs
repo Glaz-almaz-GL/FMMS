@@ -13,6 +13,7 @@ namespace FMMS.ViewModels
 {
     public partial class AboutViewModel : ViewModelBase
     {
+        private const string UnknowValue = "Неизвестно";
         private readonly Stopwatch _uptimeStopwatch;
 
         public AboutViewModel()
@@ -99,14 +100,14 @@ namespace FMMS.ViewModels
             catch (Exception ex)
             {
                 OsInfo = "Не удалось получить информацию";
-                Architecture = "Неизвестно";
+                Architecture = UnknowValue;
                 DotNetVersion = Environment.Version.ToString();
-                ClrVersion = "Неизвестно";
-                AvailableMemory = "Неизвестно";
-                TotalMemory = "Неизвестно";
-                Uptime = "Неизвестно";
-                ProcessorCount = "Неизвестно";
-                ProcessorArchitecture = "Неизвестно";
+                ClrVersion = UnknowValue;
+                AvailableMemory = UnknowValue;
+                TotalMemory = UnknowValue;
+                Uptime = UnknowValue;
+                ProcessorCount = UnknowValue;
+                ProcessorArchitecture = UnknowValue;
 
                 // Логируем ошибку если нужно
                 Debug.WriteLine($"Ошибка получения системной информации: {ex.Message}");

@@ -22,7 +22,6 @@ namespace FMMS.Managers
 
         private static readonly JsonSerializerOptions _jsonSerializerOptions = new() { WriteIndented = true };
 
-
         // Метод для загрузки настроек из файла
         public static void LoadSettings()
         {
@@ -68,11 +67,14 @@ namespace FMMS.Managers
 
 
         // Метод для сохранения настроек в файл
-        public static void SaveSettings(SettingsItem settings)
+        public static void SaveSettings(SettingsItem? settings = null)
         {
             try
             {
-                string jsonString = JsonSerializer.Serialize(settings, _jsonSerializerOptions);
+                string? jsonString = settings != null
+                    ? JsonSerializer.Serialize(settings, _jsonSerializerOptions)
+                    : JsonSerializer.Serialize(CurrentSettings, _jsonSerializerOptions);
+
                 string? folderPath = Path.GetDirectoryName(_settingsFilePath);
 
                 if (!string.IsNullOrWhiteSpace(folderPath) && !Directory.Exists(folderPath))

@@ -1,0 +1,143 @@
+<!-- DiskExplorerPage.axaml -->
+<husk:Page
+x:Class="FMMS.Views.DiskExplorerPage"
+xmlns="https://github.com/avaloniaui"
+xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+xmlns:husk="https://github.com/d3ara1n/Huskui.Avalonia"
+xmlns:fi="clr-namespace:FluentIcons.Avalonia;assembly=FluentIcons.Avalonia"
+xmlns:vm="clr-namespace:FMMS.ViewModels"
+xmlns:models="clr-namespace:FMMS.Models"
+xmlns:converters="clr-namespace:FMMS.Converters"
+Padding="20"
+d:DesignHeight="600"
+d:DesignWidth="900"
+x:DataType="vm:DiskExplorerViewModel"
+xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+IsBackButtonVisible="False"
+mc:Ignorable="d">
+
+	<husk:Card Padding="0">
+		<Grid RowDefinitions="Auto, *, Auto">
+			<!--  Панель управления  -->
+			<husk:Card
+			Grid.Row="0"
+			Margin="20,20,20,10"
+			Padding="20"
+			Classes="Elevated">
+				<StackPanel Orientation="Vertical" Spacing="15">
+					<StackPanel Orientation="Horizontal" Spacing="12">
+						<fi:SymbolIcon
+						FontSize="28"
+						Foreground="{StaticResource AccentFillColorDefaultBrush}"
+						Symbol="HardDrive" />
+						<TextBlock
+						VerticalAlignment="Center"
+						FontSize="26"
+						FontWeight="SemiBold"
+						Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+						Text="Обозреватель дисков" />
+					</StackPanel>
+
+					<StackPanel Orientation="Horizontal" Spacing="10">
+						<husk:Tag Content="{Binding TotalFolders, StringFormat='Папок: {0}'}" />
+						<husk:Tag Content="{Binding TotalFiles, StringFormat='Файлов: {0}'}" />
+						<husk:Tag Content="{Binding TotalSize, StringFormat='Общий размер: {0:F2} MB'}" />
+					</StackPanel>
+
+					<TextBlock Text="{Binding CurrentLogMessage, Mode=OneWay}"
+							   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+							   FontStyle="Italic"
+							   TextWrapping="Wrap" />
+
+				</StackPanel>
+			</husk:Card>
+
+			<!--  TreeView для отображения структуры  -->
+			<husk:Card
+			Grid.Row="1"
+			Margin="20,0,20,10"
+			Padding="15"
+			Classes="Elevated">
+				<ScrollViewer>
+					<husk:BusyContainer IsBusy="{Binding IsLoadingStructure}">
+						<Grid>
+							<!-- Заголовки столбцов -->
+							<Grid Grid.Row="0">
+								<Grid.ColumnDefinitions>
+									<ColumnDefinition Width="2*" />
+									<ColumnDefinition Width="*" />
+									<ColumnDefinition Width="*" />
+									<ColumnDefinition Width="*" />
+								</Grid.ColumnDefinitions>
+
+								<TextBlock Grid.Column="0" Text="Имя" FontWeight="Bold" />
+								<TextBlock Grid.Column="1" Text="Тип" FontWeight="Bold" />
+								<TextBlock Grid.Column="2" HorizontalAlignment="Center" Text="Размер (МБ)" FontWeight="Bold" />
+								<TextBlock Grid.Column="3" HorizontalAlignment="Center" Text="Файлы" FontWeight="Bold" />
+							</Grid>
+
+							<!-- TreeView -->
+							<TreeView Grid.Row="1" ItemsSource="{Binding RootNodes}" Margin="0,25,0,0">
+								<TreeView.Styles>
+									<Style Selector="TreeViewItem" x:DataType="models:FileSystemNode">
+										<Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+									</Style>
+								</TreeView.Styles>
+								<TreeView.DataTemplates>
+									<TreeDataTemplate DataType="{x:Type models:FileSystemNode}" ItemsSource="{Binding Children}">
+										<ScrollViewer>
+											<Grid>
+												<Grid.ColumnDefinitions>
+													<ColumnDefinition Width="2*" />
+													<ColumnDefinition Width="*" />
+													<ColumnDefinition Width="*" />
+													<ColumnDefinition Width="*" />
+													<ColumnDefinition Width="Auto" />
+												</Grid.ColumnDefinitions>
+
+												<TextBlock Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Left" Text="{Binding Name}" />
+												<TextBlock Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Left" Text="{Binding TypeDisplay}" />
+												<TextBlock Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Center" Text="{Binding Size, StringFormat=F2}" />
+												<TextBlock Grid.Column="3" VerticalAlignment="Center" HorizontalAlignment="Center" Text="{Binding FileCount}" />
+
+												<Button Grid.Column="4"
+														Command="{Binding ExpandAllChildrenCommand}"
+														CommandParameter="{Binding .}"
+														IsEnabled="{Binding HasFiles}"
+														Margin="5,0,0,0"
+														VerticalAlignment="Center"
+														Classes="Secondary" >
+													<fi:SymbolIcon Symbol="TextExpand"/>
+												</Button>
+											</Grid>
+										</ScrollViewer>
+									</TreeDataTemplate>
+								</TreeView.DataTemplates>
+							</TreeView>
+						</Grid>
+					</husk:BusyContainer>
+				</ScrollViewer>
+			</husk:Card>
+
+			<!--  Нижняя панель  -->
+			<husk:Card
+			Grid.Row="2"
+			Margin="20,0,20,20"
+			Padding="20"
+			VerticalAlignment="Bottom"
+			Classes="Elevated">
+				<StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+					<Button Classes="Primary"
+							Command="{Binding RefreshCommand}"
+							IsEnabled="{Binding !IsInitializing}">
+						<StackPanel Orientation="Horizontal" Spacing="8">
+							<fi:SymbolIcon Symbol="ArrowSync" />
+							<TextBlock Text="Обновить" />
+						</StackPanel>
+					</Button>
+				</StackPanel>
+			</husk:Card>
+		</Grid>
+	</husk:Card>
+</husk:Page>

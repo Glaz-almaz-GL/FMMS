@@ -16,7 +16,6 @@ namespace FMMS.Managers
         /// <summary>
         /// Открывает выбранный файл с помощью ассоциированной программы.
         /// </summary>
-        /// <param name="selectedFiles">Коллекция выбранных файлов. Используется только первый элемент.</param>
         public static void OpenFile(string? filePath)
         {
             if (string.IsNullOrWhiteSpace(filePath))
@@ -42,7 +41,6 @@ namespace FMMS.Managers
         /// <summary>
         /// Открывает папку, содержащую выбранный файл, в проводнике.
         /// </summary>
-        /// <param name="selectedFiles">Коллекция выбранных файлов. Используется только первый элемент.</param>
         public static void OpenContainingFolder(string? filePath)
         {
             if (string.IsNullOrWhiteSpace(filePath))

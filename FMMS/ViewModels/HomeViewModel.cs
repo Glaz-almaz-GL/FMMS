@@ -8,6 +8,7 @@ using FMMS.Models;
 using System;
 using System.Collections;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -58,9 +59,21 @@ namespace FMMS.ViewModels
         private int _totalArchiveFilesCount = 0;
 
         [ObservableProperty]
-        private ColumnSettingsItem _columnSettings = SettingsManager.CurrentSettings.ColumnSettings;
+        private ColumnSettingsItem _columnSettings;
 
         public ObservableCollection<FileMetadata> FilesAnalyzeResult { get; private set; } = [];
+
+        public HomeViewModel()
+        {
+            ColumnSettings = (ColumnSettingsItem)SettingsManager.CurrentSettings.ColumnSettings.Clone();
+            ColumnSettings.PropertyChanged += OnColumnSettingsChanged;
+        }
+
+        private async void OnColumnSettingsChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            SettingsManager.CurrentSettings.ColumnSettings = ColumnSettings;
+            await SettingsManager.SaveSettingsAsync();
+        }
 
         [RelayCommand]
         public async Task SelectFolderPath()
@@ -75,7 +88,7 @@ namespace FMMS.ViewModels
         [RelayCommand]
         public async Task SaveResults()
         {
-            SettingsManager.CurrentSettings.ColumnSettings = ColumnSettings; // Обновляем настройки в SettingsManager
+            SettingsManager.CurrentSettings.ColumnSettings = ColumnSettings;
             await SettingsManager.SaveSettingsAsync();
 
             string extension = SettingsManager.CurrentSettings.ExportFileExtension;

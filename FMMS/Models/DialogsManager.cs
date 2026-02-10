@@ -10,6 +10,7 @@ namespace FMMS.Models
 {
     public static class DialogsManager
     {
+        private const string TitleIsNullOrEmpty = "Title cannot be null or empty";
         private static TopLevel? _topLevel;
         private static AppWindow? _appWindow;
 
@@ -41,7 +42,7 @@ namespace FMMS.Models
 
             if (string.IsNullOrEmpty(title))
             {
-                throw new ArgumentException("Title cannot be null or empty", nameof(title));
+                throw new ArgumentException(TitleIsNullOrEmpty, nameof(title));
             }
 
             YesNoDialog dialog = new()
@@ -83,7 +84,7 @@ namespace FMMS.Models
 
             if (string.IsNullOrWhiteSpace(title))
             {
-                throw new ArgumentException("Title cannot be null or empty", nameof(title));
+                throw new ArgumentException(TitleIsNullOrEmpty, nameof(title));
             }
 
             FilePickerOpenOptions options = CreateFilePickerOptions(title, allowedExtensions, false);
@@ -101,7 +102,7 @@ namespace FMMS.Models
 
             if (string.IsNullOrWhiteSpace(title))
             {
-                throw new ArgumentException("Title cannot be null or empty", nameof(title));
+                throw new ArgumentException(TitleIsNullOrEmpty, nameof(title));
             }
 
             FilePickerOpenOptions options = CreateFilePickerOptions(title, allowedExtensions, true);
@@ -119,7 +120,7 @@ namespace FMMS.Models
 
             if (string.IsNullOrWhiteSpace(title))
             {
-                throw new ArgumentException("Title cannot be null or empty", nameof(title));
+                throw new ArgumentException(TitleIsNullOrEmpty, nameof(title));
             }
 
             FilePickerSaveOptions options = new()

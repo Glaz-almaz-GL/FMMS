@@ -20,9 +20,9 @@ namespace FMMS.Managers
             }
 
             IStorageFile? result = await DialogsManager.SaveFileDialogAsync(
+                title: "Сохранить как Excel",
                 suggestedFileName: Path.GetFileName(Path.GetFileName(selectedFolderPath.TrimEnd('\\', '/'))) + ".xlsx",
-                allowedExtensions: ["*.xlsx"],
-                title: "Сохранить как Excel");
+                allowedExtensions: ["*.xlsx"]);
 
             if (result != null)
             {
