@@ -31,6 +31,7 @@ FMMS (Files Metadata Management System) — это приложение наст
   ![TSV Example](https://github.com/user-attachments/assets/0c215540-8c00-4d3b-b01a-a833919cb69f)
 - **Свойства файла** — открыть стандартное окно свойств файла
 - **Настройка столбцов** — выбор отображаемых столбцов (настройки сохраняются в конфигурационный файл)
+
   ![Column Settings](https://github.com/user-attachments/assets/8d2bbfce-11c7-45b3-91f4-ef72f6249324)
 
 #### Таблица файлов
@@ -38,7 +39,7 @@ FMMS (Files Metadata Management System) — это приложение наст
 - **#** — порядковый номер файла (если включена нумерация)
 - **Имя файла** — имя файла (например, `desktop.ini`)
 - **Путь к файлу** — относительный путь до файла без имени файла
-- **Стр.** — количество страниц в PDF-файле (иначе 0)
+- **Стр.** — количество страниц в PDF-файле, для изображений - 1 (в остальных случаях 0)
 - **Расш.** — расширение файла (например, `.exe`)
 - **SHA256** — хеш-сумма файла в формате SHA256
 - **Полный путь** — полный путь до файла
@@ -53,9 +54,29 @@ FMMS (Files Metadata Management System) — это приложение наст
 
 ### 💾 Анализ дисков
 - **Обновление списка** — получение информации о дисках и папках: имя, тип (папка / файл), размер (МБ) и количество файлов
-- **Раскрытие папок** — отображение содержимого папки одним кликом
+- **Экспорт результатов**: Сохраните результаты в формате `.txt` или `.xlsx`
 
-![Disk Analysis](https://github.com/user-attachments/assets/bef68fe5-2b1b-4d41-943c-e005ee4f67f4)
+#### Контекстное меню
+- **Открыть папку** — открыть выбранную папку в проводнике
+- **Открыть содержащую папку** — открыть папку, содержащую выбранную папку
+- **Копировать** — скопировать информацию о папку в формате:
+  ```
+  Путь до проанализированной папки: C:\Users\Glaz_almaz\Desktop\
+  Отн. путь: Всё\Модели\Apex Legends\exported_files\mdl\heirloom\heirloom; Размер: 3,9 MB; Файлов: 8
+  ```
+- **Копировать как TSV** — скопировать информацию в формате, подходящем для импорта в Excel
+  ```
+  Путь до проанализированной папки: C:\Users\Glaz_almaz\Desktop\
+  RelativePath	SizeFormatted	FileCount
+  Всё\Модели\Apex Legends\exported_files\mdl\heirloom\heirloom	3,9 MB	8
+  ```
+
+  ![TSV Example](https://github.com/user-attachments/assets/9384aae6-56ea-4015-9d5b-c9ebc94b81d2)
+- **Свойства файла** — открыть стандартное окно свойств файла
+- **Настройка столбцов** — выбор отображаемых столбцов (настройки сохраняются в конфигурационный файл)
+- ![ContextMenu Example](https://github.com/user-attachments/assets/734461c2-5396-425c-a905-e8333fbc0985)
+
+![Disk Analysis](https://github.com/user-attachments/assets/34a3acfb-90cf-4581-8f5a-3b193ac90889)
 
 ### ⚙️ Настройки
 - **Тема интерфейса**: Системная / Темная / Светлая
@@ -86,10 +107,6 @@ FMMS (Files Metadata Management System) — это приложение наст
 
 1. Скачайте последнюю версию из [Releases](https://github.com/yourusername/FMMS/releases/latest)
 2. Запустите установщик и следуйте инструкциям
-
-## 📄 Лицензия
-
-Distributed under the MIT License. See `LICENSE` for more information.
 
 ## 📞 Контакты
 
