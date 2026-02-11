@@ -36,8 +36,8 @@ namespace FMMS.ViewModels
         public static string DeveloperName => "Глазов Михаил";
         public static string DeveloperCompany => "Независимый разработчик";
         public static string DeveloperContact => "glazalmazgl@gmail.com";
-        public static string GitHubUrl => "https://github.com/Glaz-almaz-GL/FMMS"; // Предполагаемый URL для FMMS
-        public static string WebsiteUrl => "https://github.com/Glaz-almaz-GL/FMMS"; // Можно использовать GitHub или другой сайт
+        public static string GitHubUrl => "https://github.com/Glaz-almaz-GL/FMMS";
+        public static string WebsiteUrl => "https://github.com/Glaz-almaz-GL/FMMS";
 
         // Системная информация
         [ObservableProperty]
@@ -88,14 +88,6 @@ namespace FMMS.ViewModels
                 // Количество ядер
                 ProcessorCount = Environment.ProcessorCount.ToString();
                 ProcessorArchitecture = RuntimeInformation.ProcessArchitecture.ToString();
-
-                // Пример получения доступной/всей памяти (может зависеть от платформы)
-                // Это пример, точная реализация может отличаться.
-                // В .NET 9+ доступна GC.GetGCMemoryInfo().TotalAvailableMemoryBytes
-                // или сторонние библиотеки для получения системной памяти.
-                // Для простоты оставим заглушки, как в оригинале, если не реализовано.
-                // AvailableMemory = GC.GetGCMemoryInfo().TotalAvailableMemoryBytes.ToString(); // Пример
-                // TotalMemory = ... // Требует дополнительной логики получения общей памяти системы
             }
             catch (Exception ex)
             {
@@ -109,7 +101,6 @@ namespace FMMS.ViewModels
                 ProcessorCount = UnknowValue;
                 ProcessorArchitecture = UnknowValue;
 
-                // Логируем ошибку если нужно
                 Debug.WriteLine($"Ошибка получения системной информации: {ex.Message}");
             }
         }
@@ -186,8 +177,7 @@ namespace FMMS.ViewModels
             {
                 Process.Start(new ProcessStartInfo
                 {
-                    // Предполагаемый URL документации для FMMS
-                    FileName = "https://github.com/Glaz-almaz-GL/FMMS/wiki",
+                    FileName = "https://github.com/Glaz-almaz-GL/FMMS/blob/master/README.md",
                     UseShellExecute = true
                 });
             }
@@ -204,7 +194,6 @@ namespace FMMS.ViewModels
             {
                 Process.Start(new ProcessStartInfo
                 {
-                    // Предполагаемый URL для создания обсуждения/issue для предложений
                     FileName = "https://github.com/Glaz-almaz-GL/FMMS/issues/new?assignees=&labels=enhancement&projects=&template=feature_request.md&title=Suggestion",
                     UseShellExecute = true
                 });
@@ -222,7 +211,6 @@ namespace FMMS.ViewModels
             {
                 Process.Start(new ProcessStartInfo
                 {
-                    // Предполагаемый URL для создания issue для ошибок
                     FileName = "https://github.com/Glaz-almaz-GL/FMMS/issues/new?assignees=&labels=bug&projects=&template=bug_report.md&title=Bug",
                     UseShellExecute = true
                 });

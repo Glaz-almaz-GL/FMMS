@@ -43,7 +43,6 @@ namespace FMMS.ViewModels
 
         public ObservableCollection<FolderInfo> Folders { get; private set; } = [];
 
-        // --- Новые команды для контекстного меню ---
         [RelayCommand]
         public void ContextMenuOpenFolder()
         {
