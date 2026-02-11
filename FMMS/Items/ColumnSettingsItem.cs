@@ -25,21 +25,21 @@ namespace FMMS.Items
         {
             return new ColumnSettingsItem
             {
-                IsIndexColumnVisible = this.IsIndexColumnVisible,
-                IsFileNameColumnVisible = this.IsFileNameColumnVisible,
-                IsFolderRelativePathColumnVisible = this.IsFolderRelativePathColumnVisible,
-                IsPagesCountColumnVisible = this.IsPagesCountColumnVisible,
-                IsFileExtensionColumnVisible = this.IsFileExtensionColumnVisible,
-                IsFileSHA256ColumnVisible = this.IsFileSHA256ColumnVisible,
-                IsFilePathColumnVisible = this.IsFilePathColumnVisible,
-                IsFileRelativePathColumnVisible = this.IsFileRelativePathColumnVisible,
-                IsArchiveFileColumnVisible = this.IsArchiveFileColumnVisible,
-                IsArchiveEntryColumnVisible = this.IsArchiveEntryColumnVisible,
-                IsArchiveFilePathColumnVisible = this.IsArchiveFilePathColumnVisible,
-                IsCompressedSizeColumnVisible = this.IsCompressedSizeColumnVisible,
-                IsUncompressedSizeColumnVisible = this.IsUncompressedSizeColumnVisible,
-                IsFileSizeMBColumnVisible = this.IsFileSizeMBColumnVisible,
-                IsFileSizeBytesColumnVisible = this.IsFileSizeBytesColumnVisible
+                IsIndexColumnVisible = IsIndexColumnVisible,
+                IsFileNameColumnVisible = IsFileNameColumnVisible,
+                IsFolderRelativePathColumnVisible = IsFolderRelativePathColumnVisible,
+                IsPagesCountColumnVisible = IsPagesCountColumnVisible,
+                IsFileExtensionColumnVisible = IsFileExtensionColumnVisible,
+                IsFileSHA256ColumnVisible = IsFileSHA256ColumnVisible,
+                IsFilePathColumnVisible = IsFilePathColumnVisible,
+                IsFileRelativePathColumnVisible = IsFileRelativePathColumnVisible,
+                IsArchiveFileColumnVisible = IsArchiveFileColumnVisible,
+                IsArchiveEntryColumnVisible = IsArchiveEntryColumnVisible,
+                IsArchiveFilePathColumnVisible = IsArchiveFilePathColumnVisible,
+                IsCompressedSizeColumnVisible = IsCompressedSizeColumnVisible,
+                IsUncompressedSizeColumnVisible = IsUncompressedSizeColumnVisible,
+                IsFileSizeMBColumnVisible = IsFileSizeMBColumnVisible,
+                IsFileSizeBytesColumnVisible = IsFileSizeBytesColumnVisible
             };
         }
     }

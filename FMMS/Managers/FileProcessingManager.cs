@@ -1,13 +1,15 @@
-﻿using FMMS.Items;
+﻿using Avalonia.Threading;
+using FMMS.Items;
 using FMMS.Models;
 using iText.Kernel.Pdf;
 using SharpCompress.Archives;
-using SharpCompress.Common;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace FMMS.Managers
@@ -25,6 +27,10 @@ namespace FMMS.Managers
             ".heif", ".heic", ".avif", ".cr2", ".nef", ".arw", ".dng", ".crw", ".tga", ".ico", ".pcx", ".pbm",
             ".pgm", ".ppm", ".dds", ".exr", ".hdr", ".jxr", ".pxr"
         };
+
+        private static readonly int MaxParallelTasks = Math.Max(1, Environment.ProcessorCount / 2);
+
+        private static readonly SemaphoreSlim _semaphore = new(MaxParallelTasks);
 
         public static async Task ProcessFilesAsync(string targetPath, Action<string, double> updateProgress, Action<string> updateProgressText, bool shouldEnumerableFiles, bool shouldAnalyzeArchives, ObservableCollection<FileMetadata> resultCollection)
         {
@@ -89,59 +95,93 @@ namespace FMMS.Managers
                 await using FileStream archiveStream = File.OpenRead(archivePath);
                 using IArchive archive = ArchiveFactory.Open(archiveStream);
 
-                async Task<Stream?> extractStreamFunc(string entryKey)
-                {
-                    IArchiveEntry? entry = archive.Entries.FirstOrDefault(e => e.Key == entryKey && !e.IsDirectory);
-                    if (entry != null)
-                    {
-                        Stream entryStream = await entry.OpenEntryStreamAsync();
-                        if (entryStream != null)
-                        {
-                            MemoryStream memoryStream = new();
-                            await entryStream.CopyToAsync(memoryStream);
-                            memoryStream.Position = 0;
-                            await entryStream.DisposeAsync();
-                            return memoryStream;
-                        }
-                    }
-                    return null;
-                }
+                // Собираем только *ключи* записей, чтобы не держать их все в памяти
+                List<string?> entryKeys = archive.Entries
+                    .Where(entry => !entry.IsDirectory && entry?.Key != null &&
+                             !entry.Key.StartsWith("__MACOSX/", StringComparison.OrdinalIgnoreCase) &&
+                             !entry.Key.EndsWith("/.DS_Store", StringComparison.OrdinalIgnoreCase) &&
+                             !entry.Key.Contains(".DS_Store"))
+                    .Select(entry => entry.Key)
+                    .ToList();
 
-                int entryCount = archive.Entries.Count(e => !e.IsDirectory);
+                int entryCount = entryKeys.Count;
                 int processedEntries = 0;
 
-                foreach (IArchiveEntry? entry in archive.Entries.Where(entry => !entry.IsDirectory))
+                // Порционная обработка записей
+                const int batchSize = 10; // Настройте размер порции по необходимости
+                for (int i = 0; i < entryKeys.Count; i += batchSize)
                 {
-                    if (string.IsNullOrEmpty(entry?.Key))
+                    List<string?> batch = entryKeys.Skip(i).Take(batchSize).ToList();
+                    List<FileMetadata> batchResults = [];
+
+                    foreach (string? entryKey in batch)
                     {
-                        continue;
+                        // Получаем запись по ключу
+                        if (entryKey == null)
+                        {
+                            continue;
+                        }
+
+                        IArchiveEntry? entry = archive.Entries.FirstOrDefault(e => e.Key == entryKey);
+                        if (entry == null || entry.Key == null)
+                        {
+                            continue;
+                        }
+
+                        // Создаём функцию извлечения для конкретной записи
+                        async Task<Stream?> extractStreamFunc(string key)
+                        {
+                            if (key != entryKey)
+                            {
+                                return null; // Защита, если функция вызывается с другим ключом
+                            }
+
+                            IArchiveEntry? ent = archive.Entries.FirstOrDefault(e => e.Key == key && !e.IsDirectory);
+                            if (ent != null)
+                            {
+                                Stream entryStream = await ent.OpenEntryStreamAsync();
+                                if (entryStream != null)
+                                {
+                                    MemoryStream memoryStream = new();
+                                    await entryStream.CopyToAsync(memoryStream);
+                                    memoryStream.Position = 0;
+                                    await entryStream.DisposeAsync();
+                                    return memoryStream;
+                                }
+                            }
+                            return null;
+                        }
+
+                        CreateFileMetadataParameters parameters = new(
+                            FilePathOrEntryKey: entry.Key,
+                            AnalyzedRootPath: Path.GetDirectoryName(archivePath) ?? string.Empty,
+                            IsArchive: false,
+                            IsEntry: true,
+                            ArchivePath: archivePath,
+                            entry.CompressedSize,
+                            entry.Size,
+                            extractStreamFunc
+                        );
+
+                        FileMetadata entryMetadata = await CreateFileMetadataAsync(parameters);
+                        batchResults.Add(entryMetadata); // Добавляем в батч
+
+                        processedEntries++;
+                        updateProgressText($"Обработка записи архива {processedEntries} из {entryCount}: {Path.GetFileName(entry.Key)}");
+                        updateProgress($"Обработка записи архива {processedEntries} из {entryCount}: {Path.GetFileName(entry.Key)}", (double)processedEntries / entryCount * 100);
                     }
 
-                    if (entry.Key.StartsWith("__MACOSX/", StringComparison.OrdinalIgnoreCase) ||
-                        entry.Key.EndsWith("/.DS_Store", StringComparison.OrdinalIgnoreCase) ||
-                        entry.Key.Contains(".DS_Store"))
+                    // Добавляем результаты порции в UI коллекцию
+                    if (batchResults.Count != 0)
                     {
-                        continue;
+                        Dispatcher.UIThread.Post(() =>
+                        {
+                            foreach (FileMetadata metadata in batchResults)
+                            {
+                                resultCollection.Add(metadata);
+                            }
+                        }, DispatcherPriority.Normal);
                     }
-
-                    CreateFileMetadataParameters parameters = new(
-                    FilePathOrEntryKey: entry.Key,
-                    AnalyzedRootPath: Path.GetDirectoryName(archivePath) ?? string.Empty,
-                    IsArchive: false,
-                    IsEntry: true,
-                    ArchivePath: archivePath,
-                    entry.CompressedSize,
-                    entry.Size,
-                    extractStreamFunc
-            );
-
-                    FileMetadata entryMetadata = await CreateFileMetadataAsync(parameters);
-
-                    resultCollection.Add(entryMetadata);
-
-                    processedEntries++;
-                    updateProgressText($"Обработка записи архива {processedEntries} из {entryCount}: {Path.GetFileName(entry.Key)}");
-                    updateProgress($"Обработка записи архива {processedEntries} из {entryCount}: {Path.GetFileName(entry.Key)}", (double)processedEntries / entryCount * 100);
                 }
             }
             catch (Exception ex)
@@ -189,31 +229,54 @@ namespace FMMS.Managers
                 totalItems += archiveFiles.Sum(GetArchiveEntryCount);
             }
 
+            ConcurrentBag<FileMetadata> processedRegularFiles = [];
             int currentFileIndex = 0;
 
-            foreach (string filePath in regularFiles)
+            Task[] tasks = regularFiles.Select(async filePath =>
             {
-                currentFileIndex++;
-                string fileName = Path.GetFileName(filePath);
-                updateProgressText($"Обработка файла {currentFileIndex} из {totalItems}: {fileName}");
-                updateProgress($"Обработка файла {currentFileIndex} из {totalItems}: {fileName}", (double)currentFileIndex / totalItems * 100);
+                await _semaphore.WaitAsync();
+                try
+                {
+                    Interlocked.Increment(ref currentFileIndex);
+                    string fileName = Path.GetFileName(filePath);
+                    updateProgressText?.Invoke($"Обработка файла {currentFileIndex} из {totalItems}: {fileName}");
 
-                CreateFileMetadataParameters parameters = new(
-                    FilePathOrEntryKey: filePath,
+                    CreateFileMetadataParameters parameters = new(
+                        FilePathOrEntryKey: filePath,
+                        AnalyzedRootPath: directoryPath,
+                        IsArchive: false,
+                        IsEntry: false,
+                        ArchivePath: string.Empty
+                    );
 
-                    AnalyzedRootPath: directoryPath,
-                    IsArchive: false,
-                    IsEntry: false,
-                    ArchivePath: string.Empty
-                );
+                    FileMetadata fileMetadata = await CreateFileMetadataAsync(parameters);
+                    processedRegularFiles.Add(fileMetadata);
+                }
+                finally
+                {
+                    _semaphore.Release(); // Всегда освобождаем семафор
+                }
+            }).ToArray();
 
-                FileMetadata fileMetadata = await CreateFileMetadataAsync(parameters);
-                resultCollection.Add(fileMetadata);
+            // Ждём завершения всех задач обработки регулярных файлов
+            await Task.WhenAll(tasks);
+
+            // Собираем результаты и добавляем в UI коллекцию пакетно
+            List<FileMetadata> resultsToAdd = processedRegularFiles.ToList();
+            if (resultsToAdd.Count != 0)
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    foreach (FileMetadata metadata in resultsToAdd)
+                    {
+                        resultCollection.Add(metadata);
+                    }
+                }, DispatcherPriority.Normal);
             }
 
             foreach (string archivePath in archiveFiles)
             {
-                currentFileIndex++;
+                Interlocked.Increment(ref currentFileIndex);
                 string archiveFileName = Path.GetFileName(archivePath);
 
                 updateProgressText($"Обработка архива {currentFileIndex} из {totalItems}: {archiveFileName}");
@@ -228,7 +291,9 @@ namespace FMMS.Managers
                 );
 
                 FileMetadata archiveMetadata = await CreateFileMetadataAsync(parameters);
-                resultCollection.Add(archiveMetadata);
+
+                // Добавляем метаданные архива в UI
+                Dispatcher.UIThread.Post(() => resultCollection.Add(archiveMetadata), DispatcherPriority.Normal);
 
                 if (shouldAnalyzeArchives)
                 {
@@ -244,16 +309,15 @@ namespace FMMS.Managers
         /// </summary>
         private static async Task<FileMetadata> CreateFileMetadataAsync(CreateFileMetadataParameters parameters)
         {
-            var (
-                filePathOrEntryKey,
-                analyzedRootPath,
-                isArchive,
-                isEntry,
-                archivePath,
-                compressedSizeBytes,
-                uncompressedSizeBytes,
-                extractStreamFunc
-            ) = parameters;
+            (
+                string? filePathOrEntryKey,
+                string? analyzedRootPath,
+                bool isArchive,
+                bool isEntry,
+                string? archivePath,
+                long? compressedSizeBytes,
+                long? uncompressedSizeBytes,
+                Func<string, Task<Stream?>>? extractStreamFunc) = parameters;
 
             // Общие свойства
             string fileExtension = Path.GetExtension(filePathOrEntryKey);
@@ -262,7 +326,7 @@ namespace FMMS.Managers
             long fileSizeBytes = isEntry ? uncompressedSizeBytes ?? 0 : new FileInfo(filePathOrEntryKey).Length;
 
             // Определение свойств, зависящих от типа (архив/запись/обычный файл)
-            var (sha256, pagesCount, fileRelativePath, folderRelativePath) = isEntry
+            (string? sha256, int pagesCount, string? fileRelativePath, string? folderRelativePath) = isEntry
                 ? await ProcessArchiveEntryAsync(filePathOrEntryKey, analyzedRootPath, archivePath, fileExtension, extractStreamFunc)
                 : await ProcessRegularFileAsync(filePathOrEntryKey, analyzedRootPath, fileExtension);
 

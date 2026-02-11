@@ -1,7 +1,7 @@
 ﻿using Avalonia.Input;
-using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using FMMS.Helpers;
 using FMMS.Items;
 using FMMS.Managers;
 using FMMS.Models;
@@ -78,11 +78,18 @@ namespace FMMS.ViewModels
         [RelayCommand]
         public async Task SelectFolderPath()
         {
-            IStorageFolder? result = await DialogsManager.OpenSingleFolderDialogAsync("Выберите папку для анализа");
-            if (result != null)
+            string? selectedPath = await PathHelper.GetSelectedFolderPathAsync();
+            if (selectedPath == null)
             {
-                SelectedFolderPath = result.Path.LocalPath;
+                return;
             }
+
+            if (!PathHelper.ValidateFolderPath(selectedPath))
+            {
+                return;
+            }
+
+            SelectedFolderPath = selectedPath;
         }
 
         [RelayCommand]
@@ -162,7 +169,7 @@ namespace FMMS.ViewModels
                     msg => ProgressText = msg, // Обновление текста прогресса
                     ShouldEnumerableFiles,
                     ShouldAnalyzeArchives,
-                    FilesAnalyzeResult // Передаём ObservableCollection для заполнения
+                    FilesAnalyzeResult
                 );
 
                 // Обновляем UI-свойства после завершения
@@ -196,7 +203,6 @@ namespace FMMS.ViewModels
             }
         }
 
-        // Обновлённые методы для Drag & Drop
         public static void OnDragOver(DragEventArgs e)
         {
             e.DragEffects = e.DataTransfer.TryGetFile() != null ? DragDropEffects.Copy : DragDropEffects.None;

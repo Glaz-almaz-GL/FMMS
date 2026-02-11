@@ -7,7 +7,6 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Reflection;
 using System.Threading.Tasks;
 
@@ -112,7 +111,6 @@ namespace FMMS.Managers
                 else
                 {
                     UpdateProgress(progressGrowl, 100, $"Установлена последняя версия: {_appVersion}", CheckingForUpdatesTitle, false);
-                    GrowlsManager.ShowInfoMsg($"Уже установлена последняя версия: {_appVersion}", "Обновление не требуется");
                 }
             }
             catch (Exception ex)
@@ -177,8 +175,8 @@ namespace FMMS.Managers
             {
                 UpdateProgress(progressGrowl, 65, "Отправка запроса на сервер...", DownloadingUpdateTitle);
 
-                using var httpClient = new HttpClient();
-                using var response = await httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+                using HttpClient httpClient = new();
+                using HttpResponseMessage response = await httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
                 response.EnsureSuccessStatusCode();
 
                 long totalBytes = response.Content.Headers.ContentLength ?? -1L;
@@ -186,7 +184,7 @@ namespace FMMS.Managers
 
                 UpdateProgress(progressGrowl, 70, "Начало загрузки файла...", DownloadingUpdateTitle);
 
-                var downloadTask = canReportProgress
+                Task downloadTask = canReportProgress
                     ? DownloadWithProgressAsync(response, filePath, totalBytes, progressGrowl)
                     : DownloadWithoutProgressAsync(response, filePath);
 
@@ -211,12 +209,12 @@ namespace FMMS.Managers
         /// </summary>
         private static async Task DownloadWithProgressAsync(HttpResponseMessage response, string filePath, long totalBytes, GrowlItem? progressGrowl)
         {
-            var buffer = new byte[BufferSize];
+            byte[] buffer = new byte[BufferSize];
             long totalBytesRead = 0;
             int lastProgressValue = ProgressDownloadStart;
 
-            await using var stream = await response.Content.ReadAsStreamAsync();
-            await using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, BufferSize, useAsync: true);
+            await using Stream stream = await response.Content.ReadAsStreamAsync();
+            await using FileStream fileStream = new(filePath, FileMode.Create, FileAccess.Write, FileShare.None, BufferSize, useAsync: true);
 
             int bytesRead;
             while ((bytesRead = await stream.ReadAsync(buffer)) > 0)
@@ -239,8 +237,8 @@ namespace FMMS.Managers
         /// </summary>
         private static async Task DownloadWithoutProgressAsync(HttpResponseMessage response, string filePath)
         {
-            await using var stream = await response.Content.ReadAsStreamAsync();
-            await using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, BufferSize, useAsync: true);
+            await using Stream stream = await response.Content.ReadAsStreamAsync();
+            await using FileStream fileStream = new(filePath, FileMode.Create, FileAccess.Write, FileShare.None, BufferSize, useAsync: true);
             await stream.CopyToAsync(fileStream);
         }
 
@@ -284,7 +282,7 @@ namespace FMMS.Managers
         {
             try
             {
-                var startInfo = new ProcessStartInfo
+                ProcessStartInfo startInfo = new()
                 {
                     FileName = installerPath,
                     UseShellExecute = true,
@@ -325,7 +323,7 @@ namespace FMMS.Managers
 
         private static bool IsNewerVersion(string latestVersion)
         {
-            if (!Version.TryParse(latestVersion, out var latest))
+            if (!Version.TryParse(latestVersion, out Version? latest))
             {
                 // Логирование или обработка неверного формата версии
                 return false;
@@ -335,8 +333,8 @@ namespace FMMS.Managers
 
         public static async Task<JObject?> GetLatestRelease(string owner, string repo)
         {
-            using var handler = new HttpClientHandler();
-            using var client = new HttpClient(handler);
+            using HttpClientHandler handler = new();
+            using HttpClient client = new(handler);
 
             client.DefaultRequestHeaders.UserAgent.ParseAdd("FMMS-App");
             client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
@@ -346,12 +344,12 @@ namespace FMMS.Managers
 
             try
             {
-                var response = await client.GetAsync(url);
+                HttpResponseMessage response = await client.GetAsync(url);
 
                 if (response.IsSuccessStatusCode)
                 {
                     string responseBody = await response.Content.ReadAsStringAsync();
-                    var release = JObject.Parse(responseBody);
+                    JObject release = JObject.Parse(responseBody);
 
                     string? htmlUrl = release["html_url"]?.ToString();
                     string? tagName = release["tag_name"]?.ToString();

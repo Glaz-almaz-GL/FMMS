@@ -14,10 +14,9 @@
 		   x:DataType="vm:HomeViewModel"
 		   DragDrop.AllowDrop="{Binding !IsAnalyzing}"
 		   IsBackButtonVisible="False"
-		   IsEnabled="{Binding !IsAnalyzing}"
 		   mc:Ignorable="d">
 
-	<husk:Card Padding="0">
+	<husk:Card Padding="0" IsEnabled="{Binding !IsAnalyzing}">
 		<Grid RowDefinitions="Auto, *, Auto">
 
 			<!--  Верхняя панель настроек  -->
@@ -71,9 +70,14 @@
 
 					<husk:InfoBar x:Name="DragDropHint"
 								  Classes="Primary"
-								  Content="Для начала анализа выберите папку для анализа или перетащите файл/папку."
-								  Header="Перетащите папку сюда"
+								  Content="Для начала анализа выберите папку/архив для анализа."
+								  Header="Перетащите архив сюда"
 								  IsVisible="{Binding SelectedFolderPath, Converter={x:Static StringConverters.IsNullOrEmpty}, ConverterParameter=!}" />
+					<TextBlock IsVisible="{Binding IsProgressVisible}"
+							   Text="{Binding ProgressText}"/>
+					<ProgressBar IsVisible="{Binding IsProgressVisible}"
+								 IsIndeterminate="False"
+								 Value="{Binding ProgressValue}"/>
 				</StackPanel>
 			</husk:Card>
 
@@ -313,12 +317,12 @@
 			</husk:Card>
 
 			<!--  Нижняя панель кнопок  -->
-			<husk:Card
-			Grid.Row="2"
-			Margin="20,0,20,20"
-			Padding="20"
-			VerticalAlignment="Bottom"
-			Classes="Elevated">
+			<husk:Card Grid.Row="2"
+					   IsEnabled="{Binding !IsAnalyzing}"
+					   Margin="20,0,20,20"
+					   Padding="20"
+					   VerticalAlignment="Bottom"
+					   Classes="Elevated">
 				<Grid ColumnDefinitions="*, Auto" ColumnSpacing="10">
 					<Button Grid.Column="0"
 							HorizontalAlignment="Stretch"
@@ -335,11 +339,10 @@
 							<TextBlock VerticalAlignment="Center" Text="Начать обработку файлов" />
 						</StackPanel>
 					</Button>
-					<Button
-					Grid.Column="1"
-					Padding="10,0,10,0"
-					Command="{Binding SaveResultsCommand}"
-					ToolTip.Tip="Сохранить результаты">
+					<Button Grid.Column="1"
+							Padding="10,0,10,0"
+							Command="{Binding SaveResultsCommand}"
+							ToolTip.Tip="Сохранить результаты">
 						<fi:SymbolIcon FontSize="18" Symbol="ArrowExportUp" />
 					</Button>
 				</Grid>

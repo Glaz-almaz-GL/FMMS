@@ -1,5 +1,4 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
-using FMMS.Models;
 
 namespace FMMS.Items
 {
@@ -33,32 +32,10 @@ namespace FMMS.Items
         public bool IsArchiveEntry { get; set; } = false; // Является ли запись файлом внутри архива
         public string ArchiveFilePath { get; set; } = string.Empty; // Путь к родительскому архиву (для записей внутри)
         public long? CompressedSizeBytes { get; set; } // Сжатый размер (для записей внутри архива)
-        public double? CompressedSizeMB
-        {
-            get
-            {
-                if (CompressedSizeBytes == null || CompressedSizeBytes <= 0)
-                {
-                    return 0;
-                }
-
-                return (double)CompressedSizeBytes / (1024 * 1024);
-            }
-        }
+        public double? CompressedSizeMB => CompressedSizeBytes is null or <= 0 ? (double?)0 : (double)CompressedSizeBytes / (1024 * 1024);
 
         public long? UncompressedSizeBytes { get; set; } // Не сжатый размер (для записей внутри архива)
-        public double? UncompressedSizeMB
-        {
-            get
-            {
-                if (UncompressedSizeBytes == null || UncompressedSizeBytes <= 0)
-                {
-                    return 0;
-                }
-
-                return (double)UncompressedSizeBytes / (1024 * 1024);
-            }
-        }
+        public double? UncompressedSizeMB => UncompressedSizeBytes is null or <= 0 ? (double?)0 : (double)UncompressedSizeBytes / (1024 * 1024);
 
         [ObservableProperty]
         private int? _index = null; // По умолчанию 0, будет обновлено позже
